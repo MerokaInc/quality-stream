@@ -25,7 +25,7 @@ A single joined dataset where each row = one NPI + HCPCS code pair, with:
 
 - **File**: `datasets/medicaid-provider-spending.parquet` (~2.7 GB, 227M rows)
 - **Source**: Medicaid.gov T-MSIS claims-level provider spending data
-- **Source URL**: https://data.medicaid.gov
+- **Source URL**: https://opendata.hhs.gov/datasets/medicaid-provider-spending/
 - **Download**: [Google Drive](https://drive.google.com/file/d/1l7VKbWlYpFaRAlDCP3CBCalvWe67Tyqa/view?usp=sharing)
 
 ## How to Run
