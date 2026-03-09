@@ -32,13 +32,13 @@ A single joined dataset where each row = one NPI + HCPCS code pair, with:
 
 1. Clone the repo
 2. Download datasets into `datasets/` folder
-3. Install dependencies: `pip install pandas numpy pyarrow plotly`
+3. Install dependencies: `pip install duckdb pandas numpy plotly`
 4. Open `notebook.ipynb` and run all cells
 
-**Note**: Files are ~3GB each. The notebook uses 50K-row chunked streaming to handle memory constraints.
+**Note**: Files are ~6GB total. DuckDB queries CSV/parquet directly without loading into memory — no chunked loops needed.
 
 ## Tech Stack
 
 - Python (Jupyter Notebook)
-- pandas, numpy, pyarrow, plotly
-- Chunked processing for ~10GB+ total data
+- DuckDB (in-process OLAP engine — queries files directly via SQL)
+- pandas, numpy, plotly (for charts and display)
