@@ -30,15 +30,24 @@ A single joined dataset where each row = one NPI + HCPCS code pair, with:
 
 ## How to Run
 
-1. Clone the repo
-2. Download datasets into `datasets/` folder
-3. Install dependencies: `pip install duckdb pandas numpy plotly`
-4. Open `notebook.ipynb` and run all cells
+### Data notebook
 
-**Note**: Files are ~6GB total. DuckDB queries CSV/parquet directly without loading into memory — no chunked loops needed.
+1. Download datasets into `datasets/` folder
+2. Install dependencies: `pip install duckdb pandas numpy plotly`
+3. Open `notebook.ipynb` and run all cells
+
+**Note**: Files are ~6GB total. DuckDB queries CSV/parquet directly without loading into memory.
+
+### Provider report (Next.js)
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
 
 ## Tech Stack
 
-- Python (Jupyter Notebook)
-- DuckDB (in-process OLAP engine — queries files directly via SQL)
-- pandas, numpy, plotly (for charts and display)
+- **Data pipeline**: Python, DuckDB, pandas, numpy, plotly (Jupyter Notebook)
+- **Provider report**: Next.js, React, TypeScript
