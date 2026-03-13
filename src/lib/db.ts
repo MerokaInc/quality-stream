@@ -1,17 +1,27 @@
-import { DuckDBInstance, DuckDBConnection } from "@duckdb/node-api";
 import path from "path";
 
 const DB_PATH = path.join(process.cwd(), "quality_stream.duckdb");
 const MEDICARE_FILE = path.join(process.cwd(), "datasets", "MUP_PHY_R25_P05_V20_D23_Prov_Svc.csv");
 const MEDICAID_FILE = path.join(process.cwd(), "datasets", "medicaid-provider-spending.parquet");
 
+// DuckDB types — loaded dynamically so the app doesn't crash when the native
+// module isn't installed (e.g. Vercel, CI without datasets).
+type DuckDBConnection = import("@duckdb/node-api").DuckDBConnection;
+
 let connection: DuckDBConnection | null = null;
 let initPromise: Promise<DuckDBConnection> | null = null;
 let usingFallback = false;
 
+async function getDuckDB() {
+  // Dynamic import so the build succeeds even without the native binary
+  return await import("@duckdb/node-api");
+}
+
 function getConnection(): Promise<DuckDBConnection> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
+    const { DuckDBInstance } = await getDuckDB();
+
     // Try persistent DB first (fast path)
     try {
       const instance = await DuckDBInstance.create(DB_PATH, {
@@ -21,7 +31,7 @@ function getConnection(): Promise<DuckDBConnection> {
       console.log("[db] Connected to quality_stream.duckdb (read-only)");
       return connection;
     } catch {
-      console.log("[db] DuckDB file locked, falling back to raw file queries");
+      console.log("[db] DuckDB file not found or locked, falling back to raw file queries");
     }
 
     // Fallback: in-memory DuckDB querying raw CSV/parquet files
@@ -97,7 +107,7 @@ function getConnection(): Promise<DuckDBConnection> {
     } catch (err) {
       initPromise = null;
       throw new Error(
-        `DuckDB fallback failed: ${err instanceof Error ? err.message : err}`
+        `DuckDB unavailable: ${err instanceof Error ? err.message : err}`
       );
     }
   })();

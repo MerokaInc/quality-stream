@@ -1,5 +1,30 @@
-import { query, toNum } from "./db";
+import { readFile } from "fs/promises";
+import path from "path";
 import type { HcpcsVolume, ProviderInfo } from "./scoring/types";
+
+export interface NpiData {
+  provider: ProviderInfo;
+  volumes: HcpcsVolume[];
+}
+
+// ─── Static fallback ─────────────────────────────────────────────────────────
+
+async function fetchFromStatic(npi: string): Promise<NpiData | null> {
+  try {
+    const filePath = path.join(
+      process.cwd(),
+      "public",
+      "data",
+      `npi-${npi}.json`
+    );
+    const raw = await readFile(filePath, "utf-8");
+    return JSON.parse(raw) as NpiData;
+  } catch {
+    return null;
+  }
+}
+
+// ─── DuckDB live query ───────────────────────────────────────────────────────
 
 interface JoinedRow {
   npi: string;
@@ -20,12 +45,9 @@ interface JoinedRow {
   medicaid_total_paid: unknown;
 }
 
-export interface NpiData {
-  provider: ProviderInfo;
-  volumes: HcpcsVolume[];
-}
+async function fetchFromDb(npi: string): Promise<NpiData | null> {
+  const { query, toNum } = await import("./db");
 
-export async function fetchNpiData(npi: string): Promise<NpiData | null> {
   const rows = await query<JoinedRow>(
     `SELECT npi, provider_name, provider_type, provider_state, provider_city,
             hcpcs_code, hcpcs_desc, payer_source,
@@ -44,10 +66,18 @@ export async function fetchNpiData(npi: string): Promise<NpiData | null> {
 
   const provider: ProviderInfo = {
     npi,
-    provider_name: infoRow?.provider_name ? String(infoRow.provider_name) : null,
-    provider_type: infoRow?.provider_type ? String(infoRow.provider_type) : null,
-    provider_state: infoRow?.provider_state ? String(infoRow.provider_state) : null,
-    provider_city: infoRow?.provider_city ? String(infoRow.provider_city) : null,
+    provider_name: infoRow?.provider_name
+      ? String(infoRow.provider_name)
+      : null,
+    provider_type: infoRow?.provider_type
+      ? String(infoRow.provider_type)
+      : null,
+    provider_state: infoRow?.provider_state
+      ? String(infoRow.provider_state)
+      : null,
+    provider_city: infoRow?.provider_city
+      ? String(infoRow.provider_city)
+      : null,
   };
 
   const volumes: HcpcsVolume[] = rows.map((r) => {
@@ -68,4 +98,17 @@ export async function fetchNpiData(npi: string): Promise<NpiData | null> {
   });
 
   return { provider, volumes };
+}
+
+// ─── Public API: try DB, fall back to static JSON ────────────────────────────
+
+export async function fetchNpiData(npi: string): Promise<NpiData | null> {
+  try {
+    return await fetchFromDb(npi);
+  } catch (err) {
+    console.log(
+      `[npi-data] DB unavailable (${err instanceof Error ? err.message : err}), trying static fallback`
+    );
+    return fetchFromStatic(npi);
+  }
 }
