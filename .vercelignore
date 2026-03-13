@@ -1,0 +1,4 @@
+quality_stream.duckdb
+datasets/
+*.csv
+*.parquet
