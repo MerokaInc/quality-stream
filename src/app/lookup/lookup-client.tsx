@@ -34,6 +34,7 @@ interface NpiData {
 // ─── Static data files served from public/data/ ─────────────────────────────
 
 const PROVIDERS_URL = "/data/obgyn-providers.json";
+const DEFAULT_NPI = "1790045821"; // Dr. Lingenfelter — PoC provider
 
 /** Static NPI data path pattern — files in public/data/npi-{npi}.json */
 function staticNpiUrl(npi: string): string {
@@ -137,13 +138,18 @@ export default function LookupClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load provider list from static JSON
+  // Load provider list from static JSON, then auto-load default provider
   useEffect(() => {
     fetch(PROVIDERS_URL)
       .then((res) => res.json())
-      .then((data) => setProviders(data))
+      .then((data) => {
+        setProviders(data);
+        // Auto-load the PoC provider on first visit
+        selectProvider(DEFAULT_NPI);
+      })
       .catch(() => setProviders([]))
       .finally(() => setProvidersLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() => {
@@ -167,15 +173,36 @@ export default function LookupClient() {
     setNpiData(null);
 
     try {
-      // Try static file first, fall back to API (for local DuckDB environments)
-      let res = await fetch(staticNpiUrl(npi));
-      if (!res.ok) {
-        res = await fetch(`/api/npi/${npi}`);
+      let data: NpiData | null = null;
+
+      // 1. Try static JSON file (works everywhere, including Vercel)
+      try {
+        const res = await fetch(staticNpiUrl(npi));
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch {
+        // static file not available, continue
       }
-      if (!res.ok) {
-        throw new Error("No data available for this provider");
+
+      // 2. Fall back to API (works locally with DuckDB)
+      if (!data) {
+        try {
+          const res = await fetch(`/api/npi/${npi}`);
+          if (res.ok) {
+            data = await res.json();
+          }
+        } catch {
+          // API not available, continue
+        }
       }
-      const data: NpiData = await res.json();
+
+      if (!data) {
+        throw new Error(
+          "Data for this provider is only available in the local environment. " +
+          "Try searching for \"Lingenfelter\" to see the PoC demo."
+        );
+      }
       setNpiData(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch data");
