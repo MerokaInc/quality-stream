@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -26,20 +26,36 @@ interface HcpcsVolume {
   total_volume: number;
 }
 
+/** Compact per-code record from the ACOG export */
+interface AcogCodeEntry {
+  desc: string | null;
+  payer: string;
+  srvcs: number;
+  claims: number;
+  pymt: number;
+  paid: number;
+}
+
+/** Per-provider record in the bulk ACOG data file */
+interface AcogProviderData {
+  provider_name: string | null;
+  provider_type: string | null;
+  provider_state: string | null;
+  provider_city: string | null;
+  codes: Record<string, AcogCodeEntry>;
+}
+
+/** Full NPI data (from individual static files or API) */
 interface NpiData {
   provider: Provider;
   volumes: HcpcsVolume[];
 }
 
-// ─── Static data files served from public/data/ ─────────────────────────────
+// ─── Static data URLs ────────────────────────────────────────────────────────
 
 const PROVIDERS_URL = "/data/obgyn-providers.json";
+const ACOG_DATA_URL = "/data/obgyn-acog-data.json";
 const DEFAULT_NPI = "1790045821"; // Dr. Lingenfelter — PoC provider
-
-/** Static NPI data path pattern — files in public/data/npi-{npi}.json */
-function staticNpiUrl(npi: string): string {
-  return `/data/npi-${npi}.json`;
-}
 
 // ─── ACOG Categories ─────────────────────────────────────────────────────────
 
@@ -94,17 +110,32 @@ interface CategoryResult {
   matchedCodes: { code: string; volume: number }[];
 }
 
-function computeAcogScore(volumes: HcpcsVolume[]): {
+interface AcogResult {
   score: number;
   categoriesPresent: number;
   results: CategoryResult[];
-} {
+}
+
+function computeAcogFromVolumes(volumes: HcpcsVolume[]): AcogResult {
   const volumeMap = new Map<string, number>();
   for (const v of volumes) {
     const existing = volumeMap.get(v.hcpcs_code) ?? 0;
     volumeMap.set(v.hcpcs_code, existing + v.total_volume);
   }
+  return computeFromMap(volumeMap);
+}
 
+function computeAcogFromCodes(
+  codes: Record<string, AcogCodeEntry>
+): AcogResult {
+  const volumeMap = new Map<string, number>();
+  for (const [code, entry] of Object.entries(codes)) {
+    volumeMap.set(code, entry.srvcs + entry.claims);
+  }
+  return computeFromMap(volumeMap);
+}
+
+function computeFromMap(volumeMap: Map<string, number>): AcogResult {
   const results: CategoryResult[] = ACOG_CATEGORIES.map((cat) => {
     const matchedCodes: { code: string; volume: number }[] = [];
     for (const code of cat.codes) {
@@ -113,44 +144,166 @@ function computeAcogScore(volumes: HcpcsVolume[]): {
         matchedCodes.push({ code, volume: vol });
       }
     }
-    return {
-      category: cat,
-      present: matchedCodes.length > 0,
-      matchedCodes,
-    };
+    return { category: cat, present: matchedCodes.length > 0, matchedCodes };
   });
-
   const categoriesPresent = results.filter((r) => r.present).length;
-  const score = Math.round((categoriesPresent / 5) * 100);
+  return {
+    score: Math.round((categoriesPresent / 5) * 100),
+    categoriesPresent,
+    results,
+  };
+}
 
-  return { score, categoriesPresent, results };
+// ─── Convert ACOG data to HcpcsVolume[] for the CPT table ────────────────────
+
+function acogCodesToVolumes(
+  codes: Record<string, AcogCodeEntry>
+): HcpcsVolume[] {
+  return Object.entries(codes)
+    .map(([code, e]) => ({
+      hcpcs_code: code,
+      hcpcs_desc: e.desc,
+      payer_source: e.payer,
+      medicare_total_benes: 0,
+      medicare_total_srvcs: e.srvcs,
+      medicare_total_pymt: e.pymt,
+      medicaid_total_benes: 0,
+      medicaid_total_claims: e.claims,
+      medicaid_total_paid: e.paid,
+      total_volume: e.srvcs + e.claims,
+    }))
+    .sort((a, b) => a.hcpcs_code.localeCompare(b.hcpcs_code));
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function LookupClient() {
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [acogData, setAcogData] = useState<Record<
+    string,
+    AcogProviderData
+  > | null>(null);
   const [providersLoading, setProvidersLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedNpi, setSelectedNpi] = useState<string | null>(null);
-  const [npiData, setNpiData] = useState<NpiData | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(
+    null
+  );
+  const [acogResult, setAcogResult] = useState<AcogResult | null>(null);
+  const [volumes, setVolumes] = useState<HcpcsVolume[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Load provider list from static JSON, then auto-load default provider
+  // Load provider list + ACOG data in parallel
   useEffect(() => {
-    fetch(PROVIDERS_URL)
-      .then((res) => res.json())
-      .then((data) => {
-        setProviders(data);
-        // Auto-load the PoC provider on first visit
-        selectProvider(DEFAULT_NPI);
+    Promise.all([
+      fetch(PROVIDERS_URL).then((r) => r.json()),
+      fetch(ACOG_DATA_URL).then((r) => r.json()),
+    ])
+      .then(([provs, acog]) => {
+        setProviders(provs);
+        setAcogData(acog);
+        setProvidersLoading(false);
+        // Auto-load the PoC provider
+        loadProvider(DEFAULT_NPI, provs, acog);
       })
-      .catch(() => setProviders([]))
-      .finally(() => setProvidersLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch(() => setProvidersLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadProvider = useCallback(
+    (
+      npi: string,
+      provs: Provider[],
+      acog: Record<string, AcogProviderData>
+    ) => {
+      setSelectedNpi(npi);
+      setDropdownOpen(false);
+      setSearch("");
+      setLoading(true);
+      setAcogResult(null);
+      setVolumes([]);
+      setSelectedProvider(null);
+
+      // Find provider info from the provider list
+      const prov = provs.find((p) => p.npi === npi) ?? null;
+
+      // Check bulk ACOG data (covers 14,648 providers)
+      const acogEntry = acog[npi];
+
+      if (acogEntry) {
+        const info: Provider = {
+          npi,
+          provider_name:
+            prov?.provider_name ?? acogEntry.provider_name ?? null,
+          provider_type:
+            prov?.provider_type ?? acogEntry.provider_type ?? null,
+          provider_state:
+            prov?.provider_state ?? acogEntry.provider_state ?? null,
+          provider_city:
+            prov?.provider_city ?? acogEntry.provider_city ?? null,
+        };
+        setSelectedProvider(info);
+        setAcogResult(computeAcogFromCodes(acogEntry.codes));
+        setVolumes(acogCodesToVolumes(acogEntry.codes));
+        setLoading(false);
+
+        // Also try to load full volumes for a richer CPT table (best effort)
+        fetch(`/data/npi-${npi}.json`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data: NpiData | null) => {
+            if (data) {
+              setVolumes(data.volumes);
+              setAcogResult(computeAcogFromVolumes(data.volumes));
+            }
+          })
+          .catch(() => {
+            /* keep ACOG data */
+          });
+        return;
+      }
+
+      // No ACOG data — try individual static file or API
+      (async () => {
+        try {
+          let data: NpiData | null = null;
+          try {
+            const res = await fetch(`/data/npi-${npi}.json`);
+            if (res.ok) data = await res.json();
+          } catch {
+            /* continue */
+          }
+          if (!data) {
+            try {
+              const res = await fetch(`/api/npi/${npi}`);
+              if (res.ok) data = await res.json();
+            } catch {
+              /* continue */
+            }
+          }
+          if (data) {
+            setSelectedProvider(data.provider);
+            setAcogResult(computeAcogFromVolumes(data.volumes));
+            setVolumes(data.volumes);
+          } else if (prov) {
+            // Provider exists but has no ACOG-relevant codes
+            setSelectedProvider(prov);
+            setAcogResult(computeFromMap(new Map()));
+            setVolumes([]);
+          }
+        } finally {
+          setLoading(false);
+        }
+      })();
+    },
+    []
+  );
+
+  function selectProvider(npi: string) {
+    if (acogData && providers.length > 0) {
+      loadProvider(npi, providers, acogData);
+    }
+  }
 
   const filtered = useMemo(() => {
     if (!search.trim()) return providers;
@@ -163,55 +316,6 @@ export default function LookupClient() {
         (p.provider_state && p.provider_state.toLowerCase().includes(q))
     );
   }, [search, providers]);
-
-  async function selectProvider(npi: string) {
-    setSelectedNpi(npi);
-    setDropdownOpen(false);
-    setSearch("");
-    setLoading(true);
-    setError(null);
-    setNpiData(null);
-
-    try {
-      let data: NpiData | null = null;
-
-      // 1. Try static JSON file (works everywhere, including Vercel)
-      try {
-        const res = await fetch(staticNpiUrl(npi));
-        if (res.ok) {
-          data = await res.json();
-        }
-      } catch {
-        // static file not available, continue
-      }
-
-      // 2. Fall back to API (works locally with DuckDB)
-      if (!data) {
-        try {
-          const res = await fetch(`/api/npi/${npi}`);
-          if (res.ok) {
-            data = await res.json();
-          }
-        } catch {
-          // API not available, continue
-        }
-      }
-
-      if (!data) {
-        throw new Error(
-          "Data for this provider is only available in the local environment. " +
-          "Try searching for \"Lingenfelter\" to see the PoC demo."
-        );
-      }
-      setNpiData(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch data");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const acogResult = npiData ? computeAcogScore(npiData.volumes) : null;
 
   return (
     <div
@@ -351,11 +455,7 @@ export default function LookupClient() {
           )}
           {dropdownOpen && (
             <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                zIndex: 5,
-              }}
+              style={{ position: "fixed", inset: 0, zIndex: 5 }}
               onClick={() => setDropdownOpen(false)}
             />
           )}
@@ -375,25 +475,8 @@ export default function LookupClient() {
           </div>
         )}
 
-        {/* Error */}
-        {error && (
-          <div
-            style={{
-              padding: 16,
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
-              borderRadius: 8,
-              color: "#991b1b",
-              fontSize: 14,
-              marginBottom: 24,
-            }}
-          >
-            {error}
-          </div>
-        )}
-
         {/* Results */}
-        {npiData && acogResult && (
+        {!loading && selectedProvider && acogResult && (
           <>
             {/* Provider card */}
             <div
@@ -413,27 +496,23 @@ export default function LookupClient() {
                   marginBottom: 4,
                 }}
               >
-                {npiData.provider.provider_name ?? "Unknown Provider"}
+                {selectedProvider.provider_name ?? "Unknown Provider"}
               </h2>
               <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>
-                {npiData.provider.provider_type ?? "OB/GYN"} &middot;{" "}
+                {selectedProvider.provider_type ?? "OB/GYN"} &middot;{" "}
                 {[
-                  npiData.provider.provider_city,
-                  npiData.provider.provider_state,
+                  selectedProvider.provider_city,
+                  selectedProvider.provider_state,
                 ]
                   .filter(Boolean)
                   .join(", ")}
               </p>
               <p
-                style={{
-                  fontSize: 14,
-                  color: "#64748b",
-                  margin: "4px 0 0",
-                }}
+                style={{ fontSize: 14, color: "#64748b", margin: "4px 0 0" }}
               >
                 NPI:{" "}
                 <code style={{ fontFamily: "var(--font-geist-mono)" }}>
-                  {npiData.provider.npi}
+                  {selectedProvider.npi}
                 </code>{" "}
                 &middot; Data: Medicare + Medicaid 2023
               </p>
@@ -476,11 +555,7 @@ export default function LookupClient() {
               >
                 {acogResult.score}{" "}
                 <span
-                  style={{
-                    fontSize: 20,
-                    fontWeight: 400,
-                    color: "#94a3b8",
-                  }}
+                  style={{ fontSize: 20, fontWeight: 400, color: "#94a3b8" }}
                 >
                   / 100
                 </span>
@@ -621,150 +696,152 @@ export default function LookupClient() {
             </div>
 
             {/* CPT Codes table */}
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #e2e8f0",
-                borderRadius: 12,
-                overflow: "hidden",
-              }}
-            >
+            {volumes.length > 0 && (
               <div
                 style={{
-                  padding: "16px 24px",
-                  borderBottom: "1px solid #e2e8f0",
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "#0f172a",
+                  background: "#fff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  overflow: "hidden",
                 }}
               >
-                CPT Codes ({npiData.volumes.length})
-              </div>
-              <div style={{ overflowX: "auto" }}>
-                <table
+                <div
                   style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    fontSize: 13,
+                    padding: "16px 24px",
+                    borderBottom: "1px solid #e2e8f0",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: "#0f172a",
                   }}
                 >
-                  <thead>
-                    <tr style={{ background: "#f8fafc" }}>
-                      <th style={thStyle}>Code</th>
-                      <th style={thStyle}>Description</th>
-                      <th style={thStyle}>Payer</th>
-                      <th style={{ ...thStyle, textAlign: "right" }}>
-                        Medicare Srvcs
-                      </th>
-                      <th style={{ ...thStyle, textAlign: "right" }}>
-                        Medicaid Claims
-                      </th>
-                      <th style={{ ...thStyle, textAlign: "right" }}>
-                        Total Vol.
-                      </th>
-                      <th style={{ ...thStyle, textAlign: "right" }}>
-                        Total Paid
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {npiData.volumes.map((v) => (
-                      <tr
-                        key={v.hcpcs_code}
-                        style={{ borderTop: "1px solid #f1f5f9" }}
-                      >
-                        <td
-                          style={{
-                            ...tdStyle,
-                            fontFamily: "var(--font-geist-mono)",
-                            fontWeight: 600,
-                          }}
+                  CPT Codes ({volumes.length})
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      fontSize: 13,
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ background: "#f8fafc" }}>
+                        <th style={thStyle}>Code</th>
+                        <th style={thStyle}>Description</th>
+                        <th style={thStyle}>Payer</th>
+                        <th style={{ ...thStyle, textAlign: "right" }}>
+                          Medicare Srvcs
+                        </th>
+                        <th style={{ ...thStyle, textAlign: "right" }}>
+                          Medicaid Claims
+                        </th>
+                        <th style={{ ...thStyle, textAlign: "right" }}>
+                          Total Vol.
+                        </th>
+                        <th style={{ ...thStyle, textAlign: "right" }}>
+                          Total Paid
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {volumes.map((v) => (
+                        <tr
+                          key={v.hcpcs_code}
+                          style={{ borderTop: "1px solid #f1f5f9" }}
                         >
-                          {v.hcpcs_code}
-                        </td>
-                        <td
-                          style={{
-                            ...tdStyle,
-                            maxWidth: 300,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {v.hcpcs_desc ?? "\u2014"}
-                        </td>
-                        <td style={tdStyle}>
-                          <span
+                          <td
                             style={{
-                              fontSize: 11,
-                              padding: "2px 6px",
-                              borderRadius: 4,
-                              background:
-                                v.payer_source === "Both Payers"
-                                  ? "#dbeafe"
-                                  : v.payer_source === "Medicare Only"
-                                    ? "#e0e7ff"
-                                    : "#fce7f3",
-                              color:
-                                v.payer_source === "Both Payers"
-                                  ? "#1e40af"
-                                  : v.payer_source === "Medicare Only"
-                                    ? "#3730a3"
-                                    : "#9d174d",
+                              ...tdStyle,
+                              fontFamily: "var(--font-geist-mono)",
+                              fontWeight: 600,
                             }}
                           >
-                            {v.payer_source}
-                          </span>
-                        </td>
-                        <td
-                          style={{
-                            ...tdStyle,
-                            textAlign: "right",
-                            fontFamily: "var(--font-geist-mono)",
-                          }}
-                        >
-                          {v.medicare_total_srvcs.toLocaleString()}
-                        </td>
-                        <td
-                          style={{
-                            ...tdStyle,
-                            textAlign: "right",
-                            fontFamily: "var(--font-geist-mono)",
-                          }}
-                        >
-                          {v.medicaid_total_claims.toLocaleString()}
-                        </td>
-                        <td
-                          style={{
-                            ...tdStyle,
-                            textAlign: "right",
-                            fontWeight: 600,
-                            fontFamily: "var(--font-geist-mono)",
-                          }}
-                        >
-                          {v.total_volume.toLocaleString()}
-                        </td>
-                        <td
-                          style={{
-                            ...tdStyle,
-                            textAlign: "right",
-                            fontFamily: "var(--font-geist-mono)",
-                          }}
-                        >
-                          $
-                          {(
-                            v.medicare_total_pymt + v.medicaid_total_paid
-                          ).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                            {v.hcpcs_code}
+                          </td>
+                          <td
+                            style={{
+                              ...tdStyle,
+                              maxWidth: 300,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {v.hcpcs_desc ?? "\u2014"}
+                          </td>
+                          <td style={tdStyle}>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                padding: "2px 6px",
+                                borderRadius: 4,
+                                background:
+                                  v.payer_source === "Both Payers"
+                                    ? "#dbeafe"
+                                    : v.payer_source === "Medicare Only"
+                                      ? "#e0e7ff"
+                                      : "#fce7f3",
+                                color:
+                                  v.payer_source === "Both Payers"
+                                    ? "#1e40af"
+                                    : v.payer_source === "Medicare Only"
+                                      ? "#3730a3"
+                                      : "#9d174d",
+                              }}
+                            >
+                              {v.payer_source}
+                            </span>
+                          </td>
+                          <td
+                            style={{
+                              ...tdStyle,
+                              textAlign: "right",
+                              fontFamily: "var(--font-geist-mono)",
+                            }}
+                          >
+                            {v.medicare_total_srvcs.toLocaleString()}
+                          </td>
+                          <td
+                            style={{
+                              ...tdStyle,
+                              textAlign: "right",
+                              fontFamily: "var(--font-geist-mono)",
+                            }}
+                          >
+                            {v.medicaid_total_claims.toLocaleString()}
+                          </td>
+                          <td
+                            style={{
+                              ...tdStyle,
+                              textAlign: "right",
+                              fontWeight: 600,
+                              fontFamily: "var(--font-geist-mono)",
+                            }}
+                          >
+                            {v.total_volume.toLocaleString()}
+                          </td>
+                          <td
+                            style={{
+                              ...tdStyle,
+                              textAlign: "right",
+                              fontFamily: "var(--font-geist-mono)",
+                            }}
+                          >
+                            $
+                            {(
+                              v.medicare_total_pymt + v.medicaid_total_paid
+                            ).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
 
