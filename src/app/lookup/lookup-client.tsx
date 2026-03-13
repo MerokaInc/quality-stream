@@ -35,10 +35,10 @@ interface NpiData {
 
 const PROVIDERS_URL = "/data/obgyn-providers.json";
 
-/** Pre-exported NPI data files keyed by NPI */
-const STATIC_NPI_FILES: Record<string, string> = {
-  "1790045821": "/data/npi-1790045821.json",
-};
+/** Static NPI data path pattern — files in public/data/npi-{npi}.json */
+function staticNpiUrl(npi: string): string {
+  return `/data/npi-${npi}.json`;
+}
 
 // ─── ACOG Categories ─────────────────────────────────────────────────────────
 
@@ -167,15 +167,13 @@ export default function LookupClient() {
     setNpiData(null);
 
     try {
-      // Use static file if available, otherwise fall back to API
-      const url = STATIC_NPI_FILES[npi] ?? `/api/npi/${npi}`;
-      const res = await fetch(url);
+      // Try static file first, fall back to API (for local DuckDB environments)
+      let res = await fetch(staticNpiUrl(npi));
       if (!res.ok) {
-        throw new Error(
-          npi in STATIC_NPI_FILES
-            ? "Static data file not found"
-            : `No data available for this provider (HTTP ${res.status})`
-        );
+        res = await fetch(`/api/npi/${npi}`);
+      }
+      if (!res.ok) {
+        throw new Error("No data available for this provider");
       }
       const data: NpiData = await res.json();
       setNpiData(data);
