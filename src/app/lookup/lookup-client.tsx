@@ -51,10 +51,37 @@ interface NpiData {
   volumes: HcpcsVolume[];
 }
 
+/** Quality scores from the pre-computed export */
+interface QualityScores {
+  peer: {
+    score: number;
+    typical_pct: number;
+    coverage: number;
+    total_codes: number;
+    typical_codes: number;
+    top_atypical: string[];
+  };
+  volume: {
+    score: number;
+    flags: { cat: string; v: number; cv: number; r: number; s: string }[];
+  };
+  charge: {
+    score: number | null;
+    avg_ratio: number | null;
+    median_peer_ratio: number;
+  };
+  payer_div: {
+    score: number;
+    both_pct: number;
+    total_codes: number;
+  };
+}
+
 // ─── Static data URLs ────────────────────────────────────────────────────────
 
 const PROVIDERS_URL = "/data/obgyn-providers.json";
 const ACOG_DATA_URL = "/data/obgyn-acog-data.json";
+const QUALITY_DATA_URL = "/data/obgyn-quality-data.json";
 const DEFAULT_NPI = "1790045821"; // Dr. Lingenfelter — PoC provider
 
 // ─── ACOG Categories ─────────────────────────────────────────────────────────
@@ -135,6 +162,50 @@ function computeAcogFromCodes(
   return computeFromMap(volumeMap);
 }
 
+function computeComposite(
+  acog: number,
+  q: QualityScores | null
+): number | null {
+  if (!q) return null;
+  const dims: { score: number; weight: number }[] = [
+    { score: acog, weight: 0.3 },
+    { score: q.peer.score, weight: 0.2 },
+    { score: q.volume.score, weight: 0.2 },
+    ...(q.charge.score != null
+      ? [{ score: q.charge.score, weight: 0.15 }]
+      : []),
+    { score: q.payer_div.score, weight: 0.15 },
+  ];
+  const totalWeight = dims.reduce((s, d) => s + d.weight, 0);
+  return Math.round(
+    dims.reduce((s, d) => s + d.score * (d.weight / totalWeight), 0)
+  );
+}
+
+function scoreColor(score: number): string {
+  if (score >= 80) return "#166534";
+  if (score >= 60) return "#78350f";
+  return "#991b1b";
+}
+
+function scoreBg(score: number): string {
+  if (score >= 80) return "#f0fdf4";
+  if (score >= 60) return "#fffbeb";
+  return "#fef2f2";
+}
+
+function scoreBorder(score: number): string {
+  if (score >= 80) return "#bbf7d0";
+  if (score >= 60) return "#fde68a";
+  return "#fecaca";
+}
+
+function scoreLabel(score: number): string {
+  if (score >= 80) return "Strong";
+  if (score >= 60) return "Moderate";
+  return "Needs Improvement";
+}
+
 function computeFromMap(volumeMap: Map<string, number>): AcogResult {
   const results: CategoryResult[] = ACOG_CATEGORIES.map((cat) => {
     const matchedCodes: { code: string; volume: number }[] = [];
@@ -183,6 +254,10 @@ export default function LookupClient() {
     string,
     AcogProviderData
   > | null>(null);
+  const [qualityData, setQualityData] = useState<Record<
+    string,
+    QualityScores
+  > | null>(null);
   const [providersLoading, setProvidersLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -191,6 +266,9 @@ export default function LookupClient() {
     null
   );
   const [acogResult, setAcogResult] = useState<AcogResult | null>(null);
+  const [qualityScores, setQualityScores] = useState<QualityScores | null>(
+    null
+  );
   const [volumes, setVolumes] = useState<HcpcsVolume[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -199,13 +277,17 @@ export default function LookupClient() {
     Promise.all([
       fetch(PROVIDERS_URL).then((r) => r.json()),
       fetch(ACOG_DATA_URL).then((r) => r.json()),
+      fetch(QUALITY_DATA_URL)
+        .then((r) => r.json())
+        .catch(() => null),
     ])
-      .then(([provs, acog]) => {
+      .then(([provs, acog, quality]) => {
         setProviders(provs);
         setAcogData(acog);
+        if (quality) setQualityData(quality);
         setProvidersLoading(false);
         // Auto-load the PoC provider
-        loadProvider(DEFAULT_NPI, provs, acog);
+        loadProvider(DEFAULT_NPI, provs, acog, quality);
       })
       .catch(() => setProvidersLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -215,15 +297,21 @@ export default function LookupClient() {
     (
       npi: string,
       provs: Provider[],
-      acog: Record<string, AcogProviderData>
+      acog: Record<string, AcogProviderData>,
+      quality?: Record<string, QualityScores> | null
     ) => {
       setSelectedNpi(npi);
       setDropdownOpen(false);
       setSearch("");
       setLoading(true);
       setAcogResult(null);
+      setQualityScores(null);
       setVolumes([]);
       setSelectedProvider(null);
+
+      // Load quality scores for this NPI
+      const qScores = quality?.[npi] ?? qualityData?.[npi] ?? null;
+      setQualityScores(qScores);
 
       // Find provider info from the provider list
       const prov = provs.find((p) => p.npi === npi) ?? null;
@@ -301,7 +389,7 @@ export default function LookupClient() {
 
   function selectProvider(npi: string) {
     if (acogData && providers.length > 0) {
-      loadProvider(npi, providers, acogData);
+      loadProvider(npi, providers, acogData, qualityData);
     }
   }
 
@@ -353,8 +441,7 @@ export default function LookupClient() {
             OB-GYN Provider Quality Lookup
           </h1>
           <p style={{ fontSize: 15, color: "#64748b", lineHeight: 1.6 }}>
-            ACOG Preventive Care Concordance &middot; Medicare &amp; Medicaid
-            2023
+            Clinical Quality Scoring &middot; Medicare &amp; Medicaid 2023
           </p>
         </div>
 
@@ -518,7 +605,89 @@ export default function LookupClient() {
               </p>
             </div>
 
-            {/* Score card */}
+            {/* ── Composite Quality Score ── */}
+            {acogResult && (() => {
+              const composite = computeComposite(acogResult.score, qualityScores);
+              if (composite == null) return null;
+              return (
+                <div
+                  style={{
+                    background: "#fff",
+                    border: `2px solid ${scoreBorder(composite)}`,
+                    borderRadius: 12,
+                    padding: "28px 32px",
+                    marginBottom: 24,
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
+                    Composite Clinical Quality Score
+                  </div>
+                  <div style={{ fontSize: 56, fontWeight: 800, color: scoreColor(composite), lineHeight: 1.1 }}>
+                    {composite}
+                    <span style={{ fontSize: 22, fontWeight: 400, color: "#94a3b8" }}> / 100</span>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: scoreColor(composite), marginTop: 4 }}>
+                    {scoreLabel(composite)}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 8 }}>
+                    Weighted: ACOG 30% &middot; Peer 20% &middot; Volume 20% &middot; Billing 15% &middot; Payer 15%
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── Dimension Score Grid ── */}
+            {qualityScores && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                  gap: 16,
+                  marginBottom: 24,
+                }}
+              >
+                {/* ACOG Concordance */}
+                <DimCard
+                  title="ACOG Concordance"
+                  score={acogResult?.score ?? 0}
+                  detail={`${acogResult?.categoriesPresent ?? 0}/5 preventive categories present`}
+                  sub="Guideline-recommended services billed"
+                />
+                {/* Peer Comparison */}
+                <DimCard
+                  title="Peer Comparison"
+                  score={qualityScores.peer.score}
+                  detail={`${qualityScores.peer.typical_codes}/${qualityScores.peer.total_codes > 25 ? 25 : qualityScores.peer.total_codes} typical OB-GYN codes covered`}
+                  sub={`${qualityScores.peer.total_codes} total codes billed`}
+                />
+                {/* Volume Adequacy */}
+                <DimCard
+                  title="Volume Adequacy"
+                  score={qualityScores.volume.score}
+                  detail={`${qualityScores.volume.flags.filter(f => f.s === "ok").length}/${qualityScores.volume.flags.length} categories at adequate volume`}
+                  sub="Screening volume vs. visit volume"
+                />
+                {/* Billing Quality */}
+                <DimCard
+                  title="Billing Quality"
+                  score={qualityScores.charge.score ?? -1}
+                  detail={qualityScores.charge.avg_ratio != null
+                    ? `Charge/Allowed ratio: ${qualityScores.charge.avg_ratio}x (peer median: ${qualityScores.charge.median_peer_ratio}x)`
+                    : "No Medicare charge data"}
+                  sub="Charge-to-allowed ratio vs. OB-GYN peers"
+                />
+                {/* Payer Diversity */}
+                <DimCard
+                  title="Payer Diversity"
+                  score={qualityScores.payer_div.score}
+                  detail={`${Math.round(qualityScores.payer_div.both_pct * 100)}% of codes in both Medicare & Medicaid`}
+                  sub="Cross-payer service breadth"
+                />
+              </div>
+            )}
+
+            {/* ── ACOG Detail Card ── */}
             <div
               style={{
                 background: "#fff",
@@ -859,6 +1028,57 @@ export default function LookupClient() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Dimension Score Card ────────────────────────────────────────────────────
+
+function DimCard({
+  title,
+  score,
+  detail,
+  sub,
+}: {
+  title: string;
+  score: number;
+  detail: string;
+  sub: string;
+}) {
+  const na = score < 0;
+  const displayScore = na ? "N/A" : score;
+  const color = na ? "#94a3b8" : scoreColor(score);
+  const bg = na ? "#f8fafc" : scoreBg(score);
+  const border = na ? "#e2e8f0" : scoreBorder(score);
+
+  return (
+    <div
+      style={{
+        background: bg,
+        border: `1px solid ${border}`,
+        borderRadius: 10,
+        padding: "20px 24px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
+          {title}
+        </span>
+        <span style={{ fontSize: 24, fontWeight: 800, color }}>
+          {displayScore}
+        </span>
+      </div>
+      <div style={{ fontSize: 13, color: "#334155" }}>{detail}</div>
+      <div style={{ fontSize: 11, color: "#94a3b8" }}>{sub}</div>
     </div>
   );
 }

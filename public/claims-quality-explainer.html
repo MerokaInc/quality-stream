@@ -1,0 +1,1760 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>How Claims Data Becomes OB-GYN Quality Scores</title>
+    <meta
+      name="description"
+      content="Visual explainer for how Medicare and Medicaid claims data is turned into OB-GYN quality scores."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f7f2e8;
+        --paper: rgba(255, 252, 246, 0.92);
+        --card: #fffdf8;
+        --line: #dfd2bb;
+        --ink: #10242a;
+        --muted: #53656a;
+        --teal: #0f766e;
+        --teal-soft: #d8f1ec;
+        --navy: #18354a;
+        --navy-soft: #dce8f4;
+        --amber: #b45309;
+        --amber-soft: #f8ead2;
+        --brick: #9a3412;
+        --brick-soft: #f9e1d7;
+        --olive: #4d5d2a;
+        --olive-soft: #edf0df;
+        --shadow: 0 18px 50px rgba(16, 36, 42, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 28%),
+          radial-gradient(circle at top right, rgba(180, 83, 9, 0.13), transparent 24%),
+          linear-gradient(180deg, #f9f4eb 0%, #f3ede1 100%);
+      }
+
+      .shell {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 80px;
+      }
+
+      .hero,
+      .section {
+        background: var(--paper);
+        border: 1px solid rgba(223, 210, 187, 0.9);
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(12px);
+      }
+
+      .hero {
+        overflow: hidden;
+        position: relative;
+        padding: 36px;
+        margin-bottom: 22px;
+      }
+
+      .hero::before,
+      .hero::after {
+        content: "";
+        position: absolute;
+        border-radius: 999px;
+        filter: blur(8px);
+        opacity: 0.7;
+      }
+
+      .hero::before {
+        width: 240px;
+        height: 240px;
+        background: rgba(15, 118, 110, 0.12);
+        top: -90px;
+        right: -70px;
+      }
+
+      .hero::after {
+        width: 200px;
+        height: 200px;
+        background: rgba(180, 83, 9, 0.12);
+        bottom: -100px;
+        left: -70px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(16, 36, 42, 0.06);
+        color: var(--navy);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        font-family: "Fraunces", serif;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+      }
+
+      h1 {
+        font-size: clamp(2.3rem, 5vw, 4.4rem);
+        line-height: 0.95;
+        max-width: 760px;
+        margin-top: 18px;
+      }
+
+      .hero p {
+        max-width: 760px;
+        margin: 16px 0 0;
+        font-size: 17px;
+        line-height: 1.7;
+        color: var(--muted);
+      }
+
+      .tab-bar {
+        position: sticky;
+        top: 14px;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+        padding: 10px;
+        border-radius: 20px;
+        border: 1px solid rgba(223, 210, 187, 0.95);
+        background: rgba(255, 252, 246, 0.84);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(12px);
+      }
+
+      .tab-button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-weight: 700;
+        padding: 12px 16px;
+        border-radius: 14px;
+        cursor: pointer;
+        transition:
+          background 180ms ease,
+          color 180ms ease,
+          transform 180ms ease;
+      }
+
+      .tab-button:hover {
+        transform: translateY(-1px);
+      }
+
+      .tab-button.is-active {
+        background: var(--navy);
+        color: #fff;
+      }
+
+      .tab-caption {
+        margin-left: auto;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .tab-panel {
+        display: none;
+      }
+
+      .tab-panel.is-active {
+        display: block;
+        animation: fadeTab 220ms ease both;
+      }
+
+      .badge-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 28px;
+      }
+
+      .badge {
+        padding: 16px 18px;
+        border-radius: 18px;
+        border: 1px solid rgba(223, 210, 187, 0.9);
+        background: rgba(255, 255, 255, 0.76);
+      }
+
+      .badge strong {
+        display: block;
+        font-size: 14px;
+        margin-bottom: 4px;
+      }
+
+      .badge span {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .section {
+        padding: 28px;
+        margin-top: 18px;
+      }
+
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        align-items: flex-end;
+        margin-bottom: 22px;
+      }
+
+      .section-head p {
+        max-width: 620px;
+        margin: 10px 0 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .kicker {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--amber);
+      }
+
+      .claims-grid,
+      .score-grid,
+      .truth-grid,
+      .standards-grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .claims-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .claim-card,
+      .score-card,
+      .truth-card,
+      .standards-card,
+      .formula-bar,
+      .step-card,
+      .weight-card {
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: var(--card);
+      }
+
+      .claim-card {
+        padding: 18px;
+      }
+
+      .claim-label {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+
+      .claim-card strong {
+        display: block;
+        font-size: 18px;
+        margin-bottom: 8px;
+      }
+
+      .claim-card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .row-note {
+        margin-top: 14px;
+        padding: 18px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, var(--navy) 0%, #244a66 100%);
+        color: white;
+      }
+
+      .row-note strong {
+        display: block;
+        font-size: 15px;
+        margin-bottom: 6px;
+      }
+
+      .row-note code {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        color: #f8fafc;
+      }
+
+      .process {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .step-card {
+        padding: 20px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .step-number {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        font-size: 14px;
+        margin-bottom: 16px;
+      }
+
+      .step-card:nth-child(1) .step-number {
+        background: var(--teal-soft);
+        color: var(--teal);
+      }
+
+      .step-card:nth-child(2) .step-number {
+        background: var(--navy-soft);
+        color: var(--navy);
+      }
+
+      .step-card:nth-child(3) .step-number {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+
+      .step-card:nth-child(4) .step-number {
+        background: var(--brick-soft);
+        color: var(--brick);
+      }
+
+      .step-card h3 {
+        font-size: 1.35rem;
+        margin-bottom: 10px;
+      }
+
+      .step-card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .formula-strip {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .formula-bar {
+        padding: 18px 20px;
+      }
+
+      .formula-bar strong {
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .formula {
+        display: inline-block;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: #f5f4ef;
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--navy);
+      }
+
+      .score-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .score-card {
+        padding: 22px;
+      }
+
+      .score-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .score-pill {
+        padding: 7px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .pill-teal {
+        background: var(--teal-soft);
+        color: var(--teal);
+      }
+
+      .pill-navy {
+        background: var(--navy-soft);
+        color: var(--navy);
+      }
+
+      .pill-amber {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+
+      .pill-brick {
+        background: var(--brick-soft);
+        color: var(--brick);
+      }
+
+      .pill-olive {
+        background: var(--olive-soft);
+        color: var(--olive);
+      }
+
+      .score-card h3 {
+        font-size: 1.45rem;
+      }
+
+      .score-card p {
+        margin: 12px 0 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .mini-list {
+        margin: 14px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .mini-list li {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding-top: 10px;
+        margin-top: 10px;
+        border-top: 1px solid #ece5d7;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .mini-list li:first-child {
+        margin-top: 0;
+      }
+
+      .mini-list code,
+      .truth-card code,
+      .standards-card code,
+      .weight-card code {
+        background: #f4efe5;
+        padding: 2px 8px;
+        border-radius: 999px;
+        color: var(--navy);
+      }
+
+      .weight-grid {
+        display: grid;
+        grid-template-columns: 1.25fr 0.75fr;
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .weight-card {
+        padding: 24px;
+      }
+
+      .weight-card h3 {
+        font-size: 1.55rem;
+        margin-bottom: 10px;
+      }
+
+      .weight-card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .weight-stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .weight-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: #faf6ee;
+        border: 1px solid #ece2cf;
+      }
+
+      .weight-row strong {
+        display: block;
+      }
+
+      .weight-row span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .weight-row b {
+        font-size: 24px;
+      }
+
+      .truth-grid,
+      .standards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .truth-card,
+      .standards-card {
+        padding: 22px;
+      }
+
+      .truth-card h3,
+      .standards-card h3 {
+        font-size: 1.4rem;
+        margin-bottom: 12px;
+      }
+
+      .truth-card ul,
+      .standards-card ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.75;
+      }
+
+      .footer-note {
+        margin-top: 18px;
+        padding: 18px 20px;
+        border-radius: 18px;
+        background: #fffaf1;
+        border: 1px solid #eadfc9;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .footer-note strong {
+        color: var(--ink);
+      }
+
+      .diagram-stack {
+        display: grid;
+        gap: 16px;
+      }
+
+      .diagram-intro {
+        margin-top: 16px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #faf6ee 0%, #fffdf8 100%);
+        border: 1px solid #eadfc9;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .diagram-card {
+        border-radius: 24px;
+        border: 1px solid var(--line);
+        background: var(--card);
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(16, 36, 42, 0.05);
+      }
+
+      .diagram-card.is-teal {
+        background: linear-gradient(180deg, rgba(216, 241, 236, 0.55) 0%, #fffdf8 42%);
+      }
+
+      .diagram-card.is-navy {
+        background: linear-gradient(180deg, rgba(220, 232, 244, 0.58) 0%, #fffdf8 42%);
+      }
+
+      .diagram-card.is-amber {
+        background: linear-gradient(180deg, rgba(248, 234, 210, 0.65) 0%, #fffdf8 42%);
+      }
+
+      .diagram-card.is-brick {
+        background: linear-gradient(180deg, rgba(249, 225, 215, 0.62) 0%, #fffdf8 42%);
+      }
+
+      .diagram-card.is-olive {
+        background: linear-gradient(180deg, rgba(237, 240, 223, 0.68) 0%, #fffdf8 42%);
+      }
+
+      .diagram-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        margin-bottom: 10px;
+      }
+
+      .diagram-top h3 {
+        font-size: 1.7rem;
+        margin-bottom: 8px;
+      }
+
+      .diagram-top p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .flow-track {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns:
+          minmax(0, 1fr) 28px
+          minmax(0, 1fr) 28px
+          minmax(0, 1fr) 28px
+          minmax(0, 1fr);
+        gap: 8px;
+        align-items: stretch;
+      }
+
+      .flow-node {
+        min-height: 160px;
+        padding: 16px;
+        border-radius: 18px;
+        border: 1px solid #e7ddca;
+        background: rgba(255, 255, 255, 0.9);
+      }
+
+      .flow-node-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .flow-node strong {
+        display: block;
+        font-size: 17px;
+        line-height: 1.35;
+        margin-bottom: 8px;
+      }
+
+      .flow-node p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
+        font-size: 14px;
+      }
+
+      .flow-arrow {
+        display: grid;
+        place-items: center;
+        font-size: 26px;
+        color: var(--navy);
+        opacity: 0.65;
+      }
+
+      .diagram-foot {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 14px;
+      }
+
+      .diagram-note,
+      .diagram-formula-box {
+        padding: 16px 18px;
+        border-radius: 18px;
+        border: 1px solid #eadfc9;
+        background: rgba(255, 250, 241, 0.92);
+      }
+
+      .diagram-note strong,
+      .diagram-formula-box strong {
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .diagram-note p,
+      .diagram-formula-box p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .diagram-formula-box .formula {
+        margin-top: 10px;
+      }
+
+      .fade-up {
+        animation: fadeUp 700ms ease both;
+      }
+
+      @keyframes fadeTab {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .fade-up:nth-child(2) {
+        animation-delay: 70ms;
+      }
+
+      .fade-up:nth-child(3) {
+        animation-delay: 140ms;
+      }
+
+      .fade-up:nth-child(4) {
+        animation-delay: 210ms;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 980px) {
+        .badge-row,
+        .claims-grid,
+        .process,
+        .score-grid,
+        .truth-grid,
+        .standards-grid,
+        .formula-strip,
+        .weight-grid,
+        .diagram-foot {
+          grid-template-columns: 1fr;
+        }
+
+        .section-head {
+          display: block;
+        }
+
+        .flow-track {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-arrow {
+          transform: rotate(90deg);
+          min-height: 24px;
+        }
+      }
+
+      @media (max-width: 700px) {
+        .shell {
+          width: min(100% - 20px, 1180px);
+          padding-top: 20px;
+          padding-bottom: 36px;
+        }
+
+        .hero,
+        .section {
+          border-radius: 22px;
+          padding: 22px;
+        }
+
+        .tab-bar {
+          top: 8px;
+          flex-wrap: wrap;
+        }
+
+        .tab-caption {
+          margin-left: 0;
+          width: 100%;
+        }
+
+        .diagram-top {
+          display: block;
+        }
+
+        h1 {
+          line-height: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="eyebrow">Claims to Quality</div>
+        <h1>How 2023 OB-GYN claims become quality scores.</h1>
+        <p>
+          This is a claims-only scoring model. It does not pretend to measure
+          outcomes we cannot see. Instead, it turns Medicare and Medicaid
+          billing patterns into a process-quality score: Did this provider bill
+          for the services a strong OB-GYN practice is expected to deliver, at
+          volumes and billing patterns that look clinically credible?
+        </p>
+
+        <div class="badge-row">
+          <div class="badge">
+            <strong>Inputs</strong>
+            <span>2023 NPI + HCPCS/CPT rows from Medicare and Medicaid.</span>
+          </div>
+          <div class="badge">
+            <strong>Standards Layer</strong>
+            <span>ACOG, HEDIS/NCQA, ASCCP, CMS billing norms, peer OB-GYN distributions.</span>
+          </div>
+          <div class="badge">
+            <strong>Output</strong>
+            <span>Five dimension scores plus one composite score from 0 to 100.</span>
+          </div>
+        </div>
+      </section>
+
+      <nav class="tab-bar" aria-label="Explainer view switcher">
+        <button
+          type="button"
+          class="tab-button is-active"
+          data-tab-target="overview"
+          aria-selected="true"
+        >
+          Overview
+        </button>
+        <button
+          type="button"
+          class="tab-button"
+          data-tab-target="diagram"
+          aria-selected="false"
+        >
+          Diagram View
+        </button>
+        <div class="tab-caption">
+          Diagram View rewrites each score as a left-to-right flow chart.
+        </div>
+      </nav>
+
+      <div class="tab-panel is-active" data-tab-panel="overview">
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <div class="kicker">1. Input Layer</div>
+            <h2>What a claims row gives us</h2>
+            <p>
+              Our base unit is one provider, one code, one year. That is enough
+              to see service mix, utilization breadth, payment patterns, and
+              cross-payer overlap. It is not enough to reconstruct one specific
+              patient journey end to end.
+            </p>
+          </div>
+        </div>
+
+        <div class="claims-grid">
+          <article class="claim-card fade-up">
+            <div class="claim-label">Provider Identity</div>
+            <strong>NPI, name, specialty, city, state</strong>
+            <p>
+              Lets us isolate OB-GYNs and benchmark each provider against the
+              rest of the OB-GYN peer set.
+            </p>
+          </article>
+          <article class="claim-card fade-up">
+            <div class="claim-label">Clinical Signal</div>
+            <strong>HCPCS or CPT code</strong>
+            <p>
+              This is the clinical breadcrumb. Codes such as
+              <code>Q0091</code>, <code>96127</code>, <code>59025</code>, and
+              <code>87491</code> map to preventive or prenatal activities.
+            </p>
+          </article>
+          <article class="claim-card fade-up">
+            <div class="claim-label">Utilization</div>
+            <strong>Services, claims, beneficiaries</strong>
+            <p>
+              Tells us whether a code appears once, occasionally, or as part of
+              routine practice behavior.
+            </p>
+          </article>
+          <article class="claim-card fade-up">
+            <div class="claim-label">Money</div>
+            <strong>Charges, allowed, paid</strong>
+            <p>
+              Gives us a billing-pattern view. Charge-to-allowed ratios can be
+              compared to OB-GYN peers for plausibility.
+            </p>
+          </article>
+          <article class="claim-card fade-up">
+            <div class="claim-label">Payer Reach</div>
+            <strong>Medicare only, Medicaid only, both payers</strong>
+            <p>
+              Shows whether the same services are delivered across payer types
+              or only in one slice of the panel.
+            </p>
+          </article>
+          <article class="claim-card fade-up">
+            <div class="claim-label">Important Limit</div>
+            <strong>No dates, diagnoses, or patient linkage</strong>
+            <p>
+              So this model is strongest for process measures and practice
+              patterns, not complications, timing, or patient-level
+              appropriateness.
+            </p>
+          </article>
+        </div>
+
+        <div class="row-note">
+          <strong>One row means:</strong>
+          <span>
+            <code>NPI + HCPCS code + 2023 totals</code>. We aggregate thousands
+            of these rows into provider-level quality signals.
+          </span>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <div class="kicker">2. Transformation</div>
+            <h2>The claims-to-score pipeline</h2>
+            <p>
+              The workflow is simple: clean the claims, map them into clinical
+              meaning, compare them to standards and peers, then roll them up
+              into dimension scores.
+            </p>
+          </div>
+        </div>
+
+        <div class="process">
+          <article class="step-card fade-up">
+            <div class="step-number">01</div>
+            <h3>Normalize</h3>
+            <p>
+              Join Medicare and Medicaid at the NPI + code level, deduplicate
+              code variants, and compute total service volume per code.
+            </p>
+          </article>
+          <article class="step-card fade-up">
+            <div class="step-number">02</div>
+            <h3>Map Codes to Care</h3>
+            <p>
+              Group individual codes into clinically recognizable buckets such
+              as cervical screening, STI screening, prenatal monitoring,
+              depression screening, and prenatal lab work.
+            </p>
+          </article>
+          <article class="step-card fade-up">
+            <div class="step-number">03</div>
+            <h3>Benchmark</h3>
+            <p>
+              For each bucket, compare the provider against board and society
+              guidance where possible, and against the 2023 OB-GYN peer
+              distribution where standards are not directly observable.
+            </p>
+          </article>
+          <article class="step-card fade-up">
+            <div class="step-number">04</div>
+            <h3>Roll Up</h3>
+            <p>
+              Convert the benchmarked signals into five dimension scores, then
+              combine them into one composite score for the lookup UI.
+            </p>
+          </article>
+        </div>
+
+        <div class="formula-strip">
+          <div class="formula-bar">
+            <strong>Core idea</strong>
+            <div class="formula">
+              billed code pattern -> clinical category -> standard or peer
+              benchmark -> dimension score -> composite score
+            </div>
+          </div>
+          <div class="formula-bar">
+            <strong>What this really measures</strong>
+            <div class="formula">
+              routine practice behavior, not direct patient outcomes
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <div class="kicker">3. Current Scorecard</div>
+            <h2>The five scores we compute today</h2>
+            <p>
+              These are the exact dimensions behind the OB-GYN lookup page.
+              Some are standards-based. Some are peer-normalized heuristics.
+              Together they answer one practical question: does this provider
+              look like a clinically complete, routine, and credible OB-GYN
+              practice?
+            </p>
+          </div>
+        </div>
+
+        <div class="score-grid">
+          <article class="score-card">
+            <div class="score-head">
+              <h3>ACOG Concordance</h3>
+              <span class="score-pill pill-teal">Standards Based</span>
+            </div>
+            <p>
+              We check whether the provider billed at least one code in each of
+              five preventive categories derived from ACOG and HEDIS-aligned
+              value sets.
+            </p>
+            <ul class="mini-list">
+              <li><strong>Formula:</strong> <code>(categories present / 5) x 100</code></li>
+              <li><strong>Categories:</strong> cervical screening, STI screening, prenatal monitoring, depression screening, prenatal lab panel</li>
+              <li><strong>Interpretation:</strong> breadth of guideline-concordant preventive activity</li>
+            </ul>
+          </article>
+
+          <article class="score-card">
+            <div class="score-head">
+              <h3>Peer Comparison</h3>
+              <span class="score-pill pill-navy">Peer Normalized</span>
+            </div>
+            <p>
+              We built a 25-code reference set from the most prevalent codes in
+              the 2023 OB-GYN peer cohort of 17,962 NPIs. Then we measure how
+              much of that common practice set a provider covers.
+            </p>
+            <ul class="mini-list">
+              <li><strong>Formula:</strong> <code>(typical OB-GYN codes billed / 25) x 100</code></li>
+              <li><strong>Why this matters:</strong> it rewards coverage of normal OB-GYN workflow, not just purity of code mix</li>
+              <li><strong>Typical examples:</strong> <code>99213</code>, <code>99395</code>, <code>G0101</code>, <code>Q0091</code>, <code>76816</code></li>
+            </ul>
+          </article>
+
+          <article class="score-card">
+            <div class="score-head">
+              <h3>Volume Adequacy</h3>
+              <span class="score-pill pill-amber">Behavior Check</span>
+            </div>
+            <p>
+              Presence alone is weak. We also test whether detected categories
+              show up at believable volume relative to a visit-volume proxy. A
+              category that appears once in a very large practice should not
+              score like a routine workflow.
+            </p>
+            <ul class="mini-list">
+              <li><strong>Formula:</strong> each detected category is scored <code>ok</code> or <code>flag</code>; the score is the percent marked <code>ok</code></li>
+              <li><strong>Current floors:</strong> cervical and prenatal labs roughly 5 percent of visits, STI about 3 percent, prenatal monitoring about 2 percent, depression about 1 percent</li>
+              <li><strong>Neutral fallback:</strong> if no measurable categories are present, the provider gets a neutral <code>50</code> instead of an automatic fail</li>
+            </ul>
+          </article>
+
+          <article class="score-card">
+            <div class="score-head">
+              <h3>Billing Quality</h3>
+              <span class="score-pill pill-brick">Medicare Pricing Pattern</span>
+            </div>
+            <p>
+              For Medicare-coded services, we compare the provider's average
+              charge-to-allowed ratio with the 2023 OB-GYN peer distribution.
+              This is not a clinical standard, but it is a useful integrity and
+              plausibility check.
+            </p>
+            <ul class="mini-list">
+              <li><strong>Metric:</strong> <code>average charge / average allowed</code></li>
+              <li><strong>Scoring bands:</strong> 100 inside peer p25 to p75, 70 inside p10 to p90, 40 outside that range</li>
+              <li><strong>2023 peer anchors:</strong> p10 1.45x, p25 1.80x, median 2.30x, p75 2.99x, p90 3.74x</li>
+            </ul>
+          </article>
+
+          <article class="score-card" style="grid-column: 1 / -1;">
+            <div class="score-head">
+              <h3>Payer Diversity</h3>
+              <span class="score-pill pill-olive">Access Proxy</span>
+            </div>
+            <p>
+              We measure how many of the provider's codes appear in both
+              Medicare and Medicaid, rather than only one payer. That is a rough
+              proxy for whether a service pattern is broad-based across the
+              practice instead of payer-specific.
+            </p>
+            <ul class="mini-list">
+              <li><strong>Metric:</strong> <code>codes seen in both payers / total codes</code></li>
+              <li><strong>Scaling:</strong> scores ramp from 0 to 100 and hit the cap around 20 percent both-payer overlap</li>
+              <li><strong>2023 peer anchor:</strong> the mean both-payer overlap in the OB-GYN peer set is about <code>10.1%</code></li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <div class="kicker">4. Rollup</div>
+            <h2>How the composite score is assembled</h2>
+            <p>
+              The composite score favors actual standards-based clinical breadth
+              first, then routine peer coverage and volume credibility, then
+              secondary billing and payer-breadth signals.
+            </p>
+          </div>
+        </div>
+
+        <div class="weight-grid">
+          <div class="weight-card">
+            <h3>Composite formula</h3>
+            <p>
+              The lookup page computes a weighted average across the five
+              dimensions. If a provider has no Medicare charge data, the billing
+              dimension drops out and the remaining weights are re-normalized.
+            </p>
+            <div class="formula" style="margin-top: 16px;">
+              0.30 x ACOG + 0.20 x Peer + 0.20 x Volume + 0.15 x Billing +
+              0.15 x Payer Diversity
+            </div>
+          </div>
+
+          <div class="weight-stack">
+            <div class="weight-row">
+              <div>
+                <strong>ACOG Concordance</strong>
+                <span>Clinical breadth against explicit guidance</span>
+              </div>
+              <b>30%</b>
+            </div>
+            <div class="weight-row">
+              <div>
+                <strong>Peer Comparison</strong>
+                <span>Coverage of routine OB-GYN code set</span>
+              </div>
+              <b>20%</b>
+            </div>
+            <div class="weight-row">
+              <div>
+                <strong>Volume Adequacy</strong>
+                <span>Routine vs one-off clinical behavior</span>
+              </div>
+              <b>20%</b>
+            </div>
+            <div class="weight-row">
+              <div>
+                <strong>Billing Quality</strong>
+                <span>Charge-to-allowed ratio vs peers</span>
+              </div>
+              <b>15%</b>
+            </div>
+            <div class="weight-row">
+              <div>
+                <strong>Payer Diversity</strong>
+                <span>Cross-payer service breadth</span>
+              </div>
+              <b>15%</b>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <div class="kicker">5. Boundaries</div>
+            <h2>What claims can tell us, and what they cannot</h2>
+            <p>
+              This matters. The score is useful precisely because it stays
+              within what aggregate claims can support. It is a process and
+              pattern score, not a full patient-outcome score.
+            </p>
+          </div>
+        </div>
+
+        <div class="truth-grid">
+          <article class="truth-card">
+            <h3>Claims can support</h3>
+            <ul>
+              <li>Whether guideline-related services appear in the provider's billed mix.</li>
+              <li>Whether those services appear at routine or suspiciously thin volume.</li>
+              <li>Whether the provider's code mix looks like a typical OB-GYN practice.</li>
+              <li>Whether Medicare billing ratios look normal or extreme.</li>
+              <li>Whether services appear across both Medicare and Medicaid populations.</li>
+            </ul>
+          </article>
+
+          <article class="truth-card">
+            <h3>Claims cannot support</h3>
+            <ul>
+              <li>Whether the right patient got the right service at the right moment.</li>
+              <li>Pregnancy timeline measures that need dates of service or gestational age.</li>
+              <li>Complication, remission, symptom improvement, or neonatal outcomes.</li>
+              <li>Diagnosis-specific appropriateness without ICD linkage.</li>
+              <li>True care-journey completion for one patient from prenatal to postpartum.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <div class="kicker">6. Standards Layer</div>
+            <h2>Where the benchmarks come from</h2>
+            <p>
+              We are not inventing a score from thin air. The model anchors
+              itself in public standards where possible, and uses peer
+              normalization where claims data cannot directly express a formal
+              quality measure.
+            </p>
+          </div>
+        </div>
+
+        <div class="standards-grid">
+          <article class="standards-card">
+            <h3>Clinical guidance</h3>
+            <ul>
+              <li><strong>ACOG:</strong> preventive care, prenatal workflow, depression screening expectations.</li>
+              <li><strong>HEDIS / NCQA:</strong> cervical cancer screening, chlamydia screening, postpartum and depression-related process concepts.</li>
+              <li><strong>ASCCP:</strong> cervical follow-up logic for future patient-level scoring.</li>
+            </ul>
+          </article>
+
+          <article class="standards-card">
+            <h3>Claims-native benchmarks</h3>
+            <ul>
+              <li><strong>2023 OB-GYN peer set:</strong> 17,962 NPIs used to define typical-code coverage.</li>
+              <li><strong>Medicare ratio bands:</strong> peer percentiles used for billing-quality scoring.</li>
+              <li><strong>Payer overlap baseline:</strong> 10.1 percent mean both-payer overlap across the peer cohort.</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="footer-note">
+          <strong>Bottom line:</strong> this score is best understood as
+          <em>claims-derived clinical completeness plus practice-pattern
+          credibility</em>. It is strong enough to rank providers, surface care
+          gaps like missing depression screening, and drive a UI. It is not yet
+          a definitive outcome score. To reach that level, we would need
+          patient-linked claims with dates, diagnoses, and episode logic.
+        </div>
+      </section>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="diagram">
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <div class="kicker">Diagram View</div>
+              <h2>One flow chart per score</h2>
+              <p>
+                Read each card from left to right. The point is to make the
+                scoring legible in one pass: what goes in, what rule is applied,
+                and how that becomes a score.
+              </p>
+            </div>
+          </div>
+
+          <div class="diagram-intro">
+            Start with claims rows, not charts. Every diagram below shows how a
+            provider-level claims pattern is converted into one dimension score.
+            The last card shows how those five dimension scores become the final
+            composite used in the lookup UI.
+          </div>
+
+          <div class="diagram-stack">
+            <article class="diagram-card is-teal">
+              <div class="diagram-top">
+                <div>
+                  <h3>ACOG Concordance</h3>
+                  <p>
+                    This is the cleanest clinical score. It asks whether the
+                    provider billed into the five preventive categories we
+                    expect an OB-GYN practice to touch.
+                  </p>
+                </div>
+                <span class="score-pill pill-teal">30% of composite</span>
+              </div>
+
+              <div class="flow-track">
+                <div class="flow-node">
+                  <div class="flow-node-label">Input</div>
+                  <strong>Raw claims codes</strong>
+                  <p>
+                    Provider bills codes like <code>Q0091</code>,
+                    <code>87491</code>, <code>59025</code>, <code>96127</code>,
+                    or <code>81003</code>.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Mapping</div>
+                  <strong>Map codes to 5 care categories</strong>
+                  <p>
+                    Cervical screening, STI screening, prenatal monitoring,
+                    depression screening, and prenatal lab panel.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Rule</div>
+                  <strong>Mark each category present or absent</strong>
+                  <p>
+                    If at least one code from a category appears, that category
+                    counts as present.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Output</div>
+                  <strong>Percent of categories present</strong>
+                  <p>
+                    4 of 5 categories present becomes a score of
+                    <code>80</code>.
+                  </p>
+                </div>
+              </div>
+
+              <div class="diagram-foot">
+                <div class="diagram-note">
+                  <strong>Readable takeaway</strong>
+                  <p>
+                    This is a breadth-of-care score. It does not ask whether
+                    every patient received the service. It asks whether the
+                    practice visibly performs the expected preventive work at
+                    all.
+                  </p>
+                </div>
+                <div class="diagram-formula-box">
+                  <strong>Formula</strong>
+                  <div class="formula">(categories present / 5) x 100</div>
+                </div>
+              </div>
+            </article>
+
+            <article class="diagram-card is-navy">
+              <div class="diagram-top">
+                <div>
+                  <h3>Peer Comparison</h3>
+                  <p>
+                    This score asks whether the provider covers the normal
+                    working code set of an OB-GYN practice, not just whether
+                    they have a few highly specific codes.
+                  </p>
+                </div>
+                <span class="score-pill pill-navy">20% of composite</span>
+              </div>
+
+              <div class="flow-track">
+                <div class="flow-node">
+                  <div class="flow-node-label">Input</div>
+                  <strong>Provider's unique billed codes</strong>
+                  <p>
+                    Build the provider's 2023 code universe from all Medicare
+                    and Medicaid HCPCS rows.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Benchmark</div>
+                  <strong>Compare to 25-code OB-GYN reference set</strong>
+                  <p>
+                    The reference set comes from the most prevalent codes across
+                    17,962 OB-GYN NPIs in the 2023 peer cohort.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Rule</div>
+                  <strong>Count how many typical codes are covered</strong>
+                  <p>
+                    Examples include <code>99213</code>, <code>99395</code>,
+                    <code>G0101</code>, <code>Q0091</code>, and
+                    <code>76816</code>.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Output</div>
+                  <strong>Coverage score from 0 to 100</strong>
+                  <p>
+                    If the provider bills 11 of the 25 typical codes, the peer
+                    score is <code>44</code>.
+                  </p>
+                </div>
+              </div>
+
+              <div class="diagram-foot">
+                <div class="diagram-note">
+                  <strong>Readable takeaway</strong>
+                  <p>
+                    This is a practice-completeness score. A provider with a
+                    broad routine OB-GYN workflow scores higher than one with a
+                    very narrow or unusual code footprint.
+                  </p>
+                </div>
+                <div class="diagram-formula-box">
+                  <strong>Formula</strong>
+                  <div class="formula">(typical codes billed / 25) x 100</div>
+                </div>
+              </div>
+            </article>
+
+            <article class="diagram-card is-amber">
+              <div class="diagram-top">
+                <div>
+                  <h3>Volume Adequacy</h3>
+                  <p>
+                    This score checks whether detected services appear at enough
+                    volume to look routine. Presence alone is not enough in a
+                    large practice.
+                  </p>
+                </div>
+                <span class="score-pill pill-amber">20% of composite</span>
+              </div>
+
+              <div class="flow-track">
+                <div class="flow-node">
+                  <div class="flow-node-label">Input</div>
+                  <strong>Visit proxy plus category-specific volume</strong>
+                  <p>
+                    Build a visit-like denominator, then count service volume in
+                    cervical, STI, prenatal monitoring, depression, and lab
+                    categories.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Rule</div>
+                  <strong>Compute category ratio</strong>
+                  <p>
+                    Example logic: category volume divided by overall visit-like
+                    volume.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Threshold</div>
+                  <strong>Mark category as ok or flag</strong>
+                  <p>
+                    Current floors are roughly 5 percent for cervical and labs,
+                    3 percent STI, 2 percent prenatal monitoring, and 1 percent
+                    depression.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Output</div>
+                  <strong>Percent of detected categories that pass</strong>
+                  <p>
+                    If 3 categories are <code>ok</code> and 1 is
+                    <code>flag</code>, the score is <code>75</code>.
+                  </p>
+                </div>
+              </div>
+
+              <div class="diagram-foot">
+                <div class="diagram-note">
+                  <strong>Readable takeaway</strong>
+                  <p>
+                    This separates routine clinical behavior from token
+                    appearance. A single depression code in a huge practice
+                    should not imply a strong screening workflow.
+                  </p>
+                </div>
+                <div class="diagram-formula-box">
+                  <strong>Scoring logic</strong>
+                  <div class="formula">ok share of measurable categories</div>
+                  <p>
+                    If no measurable categories are present, the model assigns a
+                    neutral <code>50</code>.
+                  </p>
+                </div>
+              </div>
+            </article>
+
+            <article class="diagram-card is-brick">
+              <div class="diagram-top">
+                <div>
+                  <h3>Billing Quality</h3>
+                  <p>
+                    This is a pricing-pattern check, not a direct clinical
+                    measure. It compares the provider's Medicare charge behavior
+                    to OB-GYN peers.
+                  </p>
+                </div>
+                <span class="score-pill pill-brick">15% of composite</span>
+              </div>
+
+              <div class="flow-track">
+                <div class="flow-node">
+                  <div class="flow-node-label">Input</div>
+                  <strong>Medicare charges and allowed amounts</strong>
+                  <p>
+                    Use only Medicare rows where both billed charges and allowed
+                    amounts are visible.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Metric</div>
+                  <strong>Compute average charge-to-allowed ratio</strong>
+                  <p>
+                    The key question is how aggressively charges sit above what
+                    Medicare allows.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Benchmark</div>
+                  <strong>Compare to 2023 OB-GYN percentile bands</strong>
+                  <p>
+                    p25 to p75 is the strong band, p10 to p90 is acceptable, and
+                    outside that is an outlier pattern.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Output</div>
+                  <strong>Assign 100, 70, or 40</strong>
+                  <p>
+                    Strong normal range scores <code>100</code>, broader normal
+                    range scores <code>70</code>, outliers score
+                    <code>40</code>.
+                  </p>
+                </div>
+              </div>
+
+              <div class="diagram-foot">
+                <div class="diagram-note">
+                  <strong>Readable takeaway</strong>
+                  <p>
+                    This is an integrity and plausibility signal. It helps spot
+                    unusually low or unusually high charging behavior relative
+                    to peers, but it is not a board-certified quality measure.
+                  </p>
+                </div>
+                <div class="diagram-formula-box">
+                  <strong>2023 peer anchors</strong>
+                  <div class="formula">p10 1.45x | p25 1.80x | median 2.30x | p75 2.99x | p90 3.74x</div>
+                </div>
+              </div>
+            </article>
+
+            <article class="diagram-card is-olive">
+              <div class="diagram-top">
+                <div>
+                  <h3>Payer Diversity</h3>
+                  <p>
+                    This asks whether the provider's service set shows up in
+                    both Medicare and Medicaid, which acts as a rough access and
+                    breadth proxy.
+                  </p>
+                </div>
+                <span class="score-pill pill-olive">15% of composite</span>
+              </div>
+
+              <div class="flow-track">
+                <div class="flow-node">
+                  <div class="flow-node-label">Input</div>
+                  <strong>Unique codes by payer source</strong>
+                  <p>
+                    For each code, note whether it appears in Medicare only,
+                    Medicaid only, or both payers.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Count</div>
+                  <strong>Measure both-payer overlap</strong>
+                  <p>
+                    Count how many unique codes are visible in both payer
+                    populations.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Ratio</div>
+                  <strong>Compute overlap share</strong>
+                  <p>
+                    <code>both-payer codes / total codes</code> produces the
+                    overlap percentage for the provider.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Output</div>
+                  <strong>Scale to a 0 to 100 score</strong>
+                  <p>
+                    The score climbs with overlap and effectively tops out
+                    around a 20 percent both-payer share.
+                  </p>
+                </div>
+              </div>
+
+              <div class="diagram-foot">
+                <div class="diagram-note">
+                  <strong>Readable takeaway</strong>
+                  <p>
+                    This is a cross-payer breadth signal. It suggests whether a
+                    service pattern is part of the provider's broader practice
+                    rather than isolated to one reimbursement environment.
+                  </p>
+                </div>
+                <div class="diagram-formula-box">
+                  <strong>Peer anchor</strong>
+                  <div class="formula">2023 OB-GYN mean both-payer overlap = 10.1%</div>
+                </div>
+              </div>
+            </article>
+
+            <article class="diagram-card is-navy">
+              <div class="diagram-top">
+                <div>
+                  <h3>Composite Clinical Quality Score</h3>
+                  <p>
+                    The final lookup score is a weighted average. It puts the
+                    most weight on clinical breadth first, then on routine
+                    workflow credibility.
+                  </p>
+                </div>
+                <span class="score-pill pill-navy">Final Output</span>
+              </div>
+
+              <div class="flow-track">
+                <div class="flow-node">
+                  <div class="flow-node-label">Inputs</div>
+                  <strong>Take the 5 dimension scores</strong>
+                  <p>
+                    ACOG, Peer, Volume, Billing, and Payer Diversity each come
+                    in as a number from 0 to 100.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Weighting</div>
+                  <strong>Apply fixed importance weights</strong>
+                  <p>
+                    30 percent, 20 percent, 20 percent, 15 percent, and 15
+                    percent respectively.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Adjustment</div>
+                  <strong>Re-normalize if billing is missing</strong>
+                  <p>
+                    If no Medicare charge data exists, billing drops out and the
+                    remaining weights are re-scaled.
+                  </p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-node">
+                  <div class="flow-node-label">Output</div>
+                  <strong>Show one score in the UI</strong>
+                  <p>
+                    The result becomes the headline composite score shown on the
+                    lookup page.
+                  </p>
+                </div>
+              </div>
+
+              <div class="diagram-foot">
+                <div class="diagram-note">
+                  <strong>Readable takeaway</strong>
+                  <p>
+                    This is not a black box. It is a weighted summary of five
+                    visible component scores, each of which can be inspected on
+                    its own.
+                  </p>
+                </div>
+                <div class="diagram-formula-box">
+                  <strong>Formula</strong>
+                  <div class="formula">
+                    0.30 x ACOG + 0.20 x Peer + 0.20 x Volume + 0.15 x Billing + 0.15 x Payer
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </main>
+    <script>
+      (() => {
+        const buttons = Array.from(
+          document.querySelectorAll("[data-tab-target]")
+        );
+        const panels = Array.from(
+          document.querySelectorAll("[data-tab-panel]")
+        );
+
+        function activateTab(target) {
+          buttons.forEach((button) => {
+            const active = button.dataset.tabTarget === target;
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-selected", active ? "true" : "false");
+          });
+
+          panels.forEach((panel) => {
+            panel.classList.toggle(
+              "is-active",
+              panel.dataset.tabPanel === target
+            );
+          });
+
+          const nextHash = "#" + target;
+          if (window.location.hash !== nextHash) {
+            window.history.replaceState(null, "", nextHash);
+          }
+        }
+
+        buttons.forEach((button) => {
+          button.addEventListener("click", () => {
+            activateTab(button.dataset.tabTarget);
+          });
+        });
+
+        const initial =
+          window.location.hash === "#diagram" ? "diagram" : "overview";
+        activateTab(initial);
+      })();
+    </script>
+  </body>
+</html>
