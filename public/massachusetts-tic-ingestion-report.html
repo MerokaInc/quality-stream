@@ -1,0 +1,2279 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Massachusetts TiC Ingestion Program</title>
+    <meta
+      name="description"
+      content="Execution-grade project management dashboard for Massachusetts Transparency in Coverage ingestion."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f7f1e7;
+        --paper: rgba(255, 251, 244, 0.92);
+        --card: rgba(255, 255, 255, 0.76);
+        --ink: #162731;
+        --muted: #5f696f;
+        --line: #d9ccb8;
+        --navy: #173a52;
+        --navy-soft: #dce8f1;
+        --teal: #0d766e;
+        --teal-soft: #d7f0ea;
+        --amber: #a65d09;
+        --amber-soft: #f7e8d0;
+        --brick: #a03a15;
+        --brick-soft: #f6ddd4;
+        --olive: #556529;
+        --olive-soft: #edf1df;
+        --plum: #65406e;
+        --plum-soft: #eee0f1;
+        --slate: #70818a;
+        --shadow: 0 24px 70px rgba(22, 39, 49, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(13, 118, 110, 0.12), transparent 28%),
+          radial-gradient(circle at top right, rgba(166, 93, 9, 0.12), transparent 22%),
+          linear-gradient(180deg, #fbf5ea 0%, #f2eadf 100%);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .shell {
+        width: min(1320px, calc(100% - 28px));
+        margin: 0 auto;
+        padding: 24px 0 80px;
+      }
+
+      .hero,
+      .section {
+        background: var(--paper);
+        border: 1px solid rgba(217, 204, 184, 0.92);
+        border-radius: 30px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(12px);
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 36px;
+      }
+
+      .hero::before,
+      .hero::after {
+        content: "";
+        position: absolute;
+        border-radius: 999px;
+        filter: blur(10px);
+        opacity: 0.72;
+      }
+
+      .hero::before {
+        width: 260px;
+        height: 260px;
+        background: rgba(13, 118, 110, 0.14);
+        top: -90px;
+        right: -70px;
+      }
+
+      .hero::after {
+        width: 220px;
+        height: 220px;
+        background: rgba(166, 93, 9, 0.12);
+        bottom: -90px;
+        left: -60px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(22, 39, 49, 0.06);
+        color: var(--navy);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4 {
+        margin: 0;
+        font-family: "Fraunces", serif;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+      }
+
+      h1 {
+        max-width: 880px;
+        margin-top: 16px;
+        font-size: clamp(2.6rem, 5vw, 4.8rem);
+        line-height: 0.94;
+      }
+
+      .hero-copy {
+        max-width: 880px;
+        margin-top: 16px;
+        font-size: 17px;
+        line-height: 1.72;
+        color: var(--muted);
+      }
+
+      .hero-copy strong {
+        color: var(--ink);
+      }
+
+      .summary-grid,
+      .program-grid,
+      .estimate-grid,
+      .architecture-grid,
+      .pr-grid,
+      .payor-grid,
+      .phase-stack,
+      .source-grid,
+      .inventory-grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        margin-top: 28px;
+      }
+
+      .estimate-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .architecture-grid,
+      .pr-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .nav {
+        position: sticky;
+        top: 14px;
+        z-index: 20;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 18px 0;
+        padding: 10px;
+        border-radius: 20px;
+        border: 1px solid rgba(217, 204, 184, 0.92);
+        background: rgba(255, 251, 244, 0.86);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(12px);
+      }
+
+      .nav a {
+        text-decoration: none;
+        padding: 11px 15px;
+        border-radius: 14px;
+        font-weight: 700;
+        color: var(--muted);
+        transition:
+          background 180ms ease,
+          color 180ms ease,
+          transform 180ms ease;
+      }
+
+      .nav a:hover {
+        transform: translateY(-1px);
+        background: rgba(23, 58, 82, 0.08);
+        color: var(--navy);
+      }
+
+      .section {
+        padding: 28px;
+        margin-top: 18px;
+      }
+
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .section-head p {
+        max-width: 760px;
+        color: var(--muted);
+        line-height: 1.68;
+      }
+
+      .kicker {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--amber);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .card {
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid rgba(217, 204, 184, 0.92);
+        background: var(--card);
+      }
+
+      .card p,
+      .card li {
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .card ul,
+      .card ol {
+        margin: 14px 0 0;
+        padding-left: 18px;
+      }
+
+      .card li + li {
+        margin-top: 8px;
+      }
+
+      .tone-teal {
+        background: linear-gradient(180deg, rgba(215, 240, 234, 0.96), rgba(255, 255, 255, 0.82));
+      }
+
+      .tone-navy {
+        background: linear-gradient(180deg, rgba(220, 232, 241, 0.96), rgba(255, 255, 255, 0.82));
+      }
+
+      .tone-amber {
+        background: linear-gradient(180deg, rgba(247, 232, 208, 0.96), rgba(255, 255, 255, 0.82));
+      }
+
+      .tone-brick {
+        background: linear-gradient(180deg, rgba(246, 221, 212, 0.96), rgba(255, 255, 255, 0.82));
+      }
+
+      .tone-olive {
+        background: linear-gradient(180deg, rgba(237, 241, 223, 0.96), rgba(255, 255, 255, 0.82));
+      }
+
+      .tone-plum {
+        background: linear-gradient(180deg, rgba(238, 224, 241, 0.96), rgba(255, 255, 255, 0.82));
+      }
+
+      .metric-card .value {
+        display: block;
+        font-size: 1.65rem;
+        font-weight: 700;
+        color: var(--navy);
+      }
+
+      .metric-card .label {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .estimate-card .value {
+        display: block;
+        font-size: 1.55rem;
+        font-weight: 700;
+        color: var(--navy);
+      }
+
+      .estimate-card .label {
+        display: block;
+        margin-top: 4px;
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .estimate-card p {
+        margin-top: 10px;
+      }
+
+      .program-grid {
+        grid-template-columns: minmax(420px, 0.9fr) minmax(0, 1.1fr);
+      }
+
+      .chart-shell {
+        display: grid;
+        grid-template-columns: minmax(220px, 240px) minmax(0, 1fr);
+        gap: 18px;
+        align-items: center;
+      }
+
+      .donut {
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        position: relative;
+        background: conic-gradient(var(--line) 0 360deg);
+        box-shadow: inset 0 0 0 1px rgba(217, 204, 184, 0.55);
+      }
+
+      .donut::after {
+        content: "";
+        position: absolute;
+        inset: 24px;
+        border-radius: 50%;
+        background: rgba(255, 251, 244, 0.95);
+        box-shadow: inset 0 0 0 1px rgba(217, 204, 184, 0.72);
+      }
+
+      .donut-hole {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 40px;
+      }
+
+      .donut-hole strong {
+        display: block;
+        font-size: 1.45rem;
+        line-height: 1.05;
+        color: var(--ink);
+      }
+
+      .donut-hole span {
+        display: block;
+        margin-top: 8px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .legend {
+        display: grid;
+        gap: 10px;
+      }
+
+      .legend-row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 10px 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(217, 204, 184, 0.92);
+        background: rgba(255, 255, 255, 0.64);
+      }
+
+      .swatch {
+        width: 12px;
+        height: 12px;
+        margin-top: 5px;
+        border-radius: 999px;
+        flex: 0 0 auto;
+      }
+
+      .legend-copy strong {
+        display: block;
+        margin-bottom: 2px;
+        color: var(--ink);
+      }
+
+      .legend-copy span {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .phase-stack {
+        grid-template-columns: 1fr;
+      }
+
+      .pr-card {
+        display: grid;
+        gap: 14px;
+      }
+
+      .pr-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        align-items: flex-start;
+      }
+
+      .pr-id {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        background: var(--navy);
+        font-weight: 700;
+        flex: 0 0 auto;
+      }
+
+      .pr-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .phase-card {
+        padding: 0;
+        overflow: hidden;
+      }
+
+      .phase-header {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        padding: 18px 18px 16px;
+        border-bottom: 1px solid rgba(217, 204, 184, 0.8);
+        background: rgba(255, 255, 255, 0.44);
+      }
+
+      .phase-number {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: #fff;
+        background: var(--navy);
+        flex: 0 0 auto;
+      }
+
+      .phase-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .tag.ready {
+        color: var(--teal);
+        background: var(--teal-soft);
+      }
+
+      .tag.blocked {
+        color: var(--brick);
+        background: var(--brick-soft);
+      }
+
+      .tag.next {
+        color: var(--amber);
+        background: var(--amber-soft);
+      }
+
+      .tag.info {
+        color: var(--navy);
+        background: var(--navy-soft);
+      }
+
+      .phase-table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 14px 16px;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid rgba(217, 204, 184, 0.72);
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      th {
+        background: rgba(247, 241, 231, 0.96);
+        color: var(--navy);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+      }
+
+      td {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.56;
+      }
+
+      td strong {
+        display: block;
+        color: var(--ink);
+        margin-bottom: 4px;
+      }
+
+      .link-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .link-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 10px;
+        border-radius: 999px;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--navy);
+        background: rgba(220, 232, 241, 0.9);
+      }
+
+      .link-chip:hover {
+        color: #fff;
+        background: var(--navy);
+      }
+
+      .payor-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .payor-card {
+        display: grid;
+        gap: 16px;
+      }
+
+      .payor-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .payor-top p {
+        margin-top: 8px;
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .status-ready {
+        color: var(--teal);
+        background: var(--teal-soft);
+      }
+
+      .status-blocked {
+        color: var(--brick);
+        background: var(--brick-soft);
+      }
+
+      .payor-body {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        gap: 18px;
+      }
+
+      .payor-metrics {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .mini {
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(217, 204, 184, 0.92);
+        background: rgba(255, 255, 255, 0.68);
+      }
+
+      .mini strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--ink);
+      }
+
+      .mini span {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .list-tight {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .list-tight div {
+        padding: 10px 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(217, 204, 184, 0.92);
+        background: rgba(255, 255, 255, 0.64);
+      }
+
+      .list-tight strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .path-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .path-item {
+        padding: 10px 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(217, 204, 184, 0.92);
+        background: rgba(255, 255, 255, 0.66);
+      }
+
+      .path-item code {
+        color: var(--navy);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .inventory-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border-radius: 22px;
+        border: 1px solid rgba(217, 204, 184, 0.92);
+        background: rgba(255, 255, 255, 0.68);
+      }
+
+      .sources-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .source-item {
+        padding: 14px 16px;
+        border-radius: 18px;
+        border: 1px solid rgba(217, 204, 184, 0.92);
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      .source-item strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .source-item a {
+        word-break: break-word;
+        color: var(--navy);
+      }
+
+      .source-item a:hover {
+        color: var(--teal);
+      }
+
+      .footnote {
+        margin-top: 16px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      @media (max-width: 1180px) {
+        .summary-grid,
+        .program-grid,
+        .estimate-grid,
+        .architecture-grid,
+        .pr-grid,
+        .payor-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .chart-shell,
+        .payor-body {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .shell {
+          width: min(100% - 16px, 1320px);
+        }
+
+        .hero,
+        .section {
+          padding: 22px;
+          border-radius: 24px;
+        }
+
+        .section-head {
+          display: block;
+        }
+
+        .section-head p {
+          margin-top: 12px;
+        }
+
+        .payor-metrics,
+        .summary-grid,
+        .estimate-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .phase-header {
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero" id="top">
+        <span class="eyebrow">Massachusetts / Transparency in Coverage / March 25, 2026</span>
+        <h1>Massachusetts TiC Ingestion Program</h1>
+        <p class="hero-copy">
+          This is the execution version of the Massachusetts file-ingestion project. It converts the strategy in
+          <strong>`tic.md`</strong> into a working program plan with numbered steps, task rows, direct source links,
+          measured file counts, measured storage volume, and payer-level charts.
+        </p>
+        <p class="hero-copy">
+          Exact current file counts and byte estimates come from reachable March 2026 manifests. Payer priority uses
+          the 2024 Massachusetts DOI covered-lives report plus CHIA CY2024 medical-claims volume rank. Exact raw claim
+          counts were not exposed in a reachable machine-readable form here, so the plan uses claims rank as the
+          public claims proxy.
+        </p>
+        <div class="summary-grid" id="summary-grid"></div>
+      </section>
+
+      <nav class="nav" aria-label="Section navigation">
+        <a href="#overview">Overview</a>
+        <a href="#estimate">Estimate</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#plan">Plan</a>
+        <a href="#payors">Payors</a>
+        <a href="#inventory">Inventory</a>
+        <a href="#sources">Sources</a>
+      </nav>
+
+      <section class="section" id="overview">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Program Overview</span>
+            <h2>What matters most before the team starts moving files</h2>
+          </div>
+          <p>
+            The work is concentrated in one place: BCBSMA. The rest of the Massachusetts regional set is operationally
+            important but comparatively lightweight. The program therefore needs a BCBS-specific download strategy,
+            separate Point32 brand handling, and a blocker lane for WellSense and Health New England.
+          </p>
+        </div>
+        <div class="program-grid">
+          <article class="card tone-navy">
+            <div class="chart-shell">
+              <div class="donut" id="overall-volume-donut">
+                <div class="donut-hole">
+                  <strong id="overall-volume-value"></strong>
+                  <span>resolved March 2026 published volume by payor program</span>
+                </div>
+              </div>
+              <div>
+                <h3>Known volume share by payor</h3>
+                <p style="margin-top: 10px;">
+                  This pie chart shows where storage pressure sits right now. It uses only carriers with measured file
+                  sizes from reachable current manifests.
+                </p>
+                <div class="legend" id="overall-volume-legend" style="margin-top: 16px;"></div>
+              </div>
+            </div>
+          </article>
+          <article class="card tone-amber">
+            <h3>Critical path</h3>
+            <ol>
+              <li>Freeze the source registry for the six ready regional payer programs.</li>
+              <li>Build high-volume acquisition for the two BCBSMA indexes before anything else.</li>
+              <li>Crawl and consolidate Harvard Pilgrim's 127 plan-specific TOCs separately from Tufts.</li>
+              <li>Clear WellSense and Health New England access blockers so the Massachusetts regional set is complete.</li>
+              <li>Publish a monthly manifest diff, file ledger, and gap report instead of treating ingestion as a one-off pull.</li>
+            </ol>
+            <div class="list-tight">
+              <div>
+                <strong>Known first-pass download set</strong>
+                1,530 unique URLs and 2.334 TB across the six currently enumerable regional programs.
+              </div>
+              <div>
+                <strong>Largest single risk</strong>
+                WellSense is still unresolved even though it has 111,018 Massachusetts covered lives and CHIA claims rank #4.
+              </div>
+              <div>
+                <strong>Most misleading source if treated casually</strong>
+                Point32 looks small on storage but still needs separate Tufts and Harvard ingestion logic.
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="estimate">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Estimate And Architecture</span>
+            <h2>How long this should take with the current m-alpha warehouse pattern</h2>
+          </div>
+          <p>
+            These estimates assume two top-tier engineers working full time with strong agentic programming support.
+            They are based on the current `m-alpha` shape: pure-Python raw ingest, Spark-to-Iceberg Unified tables,
+            Spark-built consolidated layers, and Redshift served through S3 staging plus atomic table swap.
+          </p>
+        </div>
+        <div class="estimate-grid" id="estimate-grid"></div>
+        <div class="architecture-grid" id="architecture-grid" style="margin-top: 16px;"></div>
+      </section>
+
+      <section class="section" id="roadmap">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Architecture Roadmap</span>
+            <h2>Recommended PR sequence for the existing Redshift and Glue architecture</h2>
+          </div>
+          <p>
+            The recommended implementation unit is one new `tic` source module plus small serving marts, not a giant
+            one-shot PR. The sequence below follows the conventions in `m-alpha/CLAUDE.md`, `pipeline/README.md`, the
+            current consolidated Redshift builders, and Step Functions orchestration.
+          </p>
+        </div>
+        <div class="pr-grid" id="pr-grid"></div>
+        <p class="footnote">
+          Key architectural constraint: keep full granular TiC rate facts in Unified Iceberg first. Use Redshift for
+          inventories, registries, Massachusetts market summaries, and benchmark marts. Do not try to make Redshift the
+          first landing zone for every raw negotiated rate row.
+        </p>
+      </section>
+
+      <section class="section" id="plan">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Execution Plan</span>
+            <h2>Numbered steps, task rows, inputs, links, and exit criteria</h2>
+          </div>
+          <p>
+            This is a proposed six-step plan anchored to concrete dates starting March 26, 2026. The task rows are
+            structured like an engineering program board: each task has scope, owner role, source links, quantified
+            input burden, and a clear definition of done.
+          </p>
+        </div>
+        <div class="phase-stack" id="phase-stack"></div>
+      </section>
+
+      <section class="section" id="payors">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Payor Breakdown</span>
+            <h2>One card per payor program, including a pie chart for each</h2>
+          </div>
+          <p>
+            Each card shows claims priority, plan topology, file mix, direct links, and the operational issue that
+            matters most. The pie chart on each card is the current file mix for that payer: in-network versus
+            allowed-amount files, or unresolved versus known where the source is still blocked. In TiC, `allowed
+            amount` means the historical out-of-network amount the insurer treated as payable, not the billed charge
+            and not an in-network negotiated rate.
+          </p>
+        </div>
+        <div class="payor-grid" id="payor-grid"></div>
+      </section>
+
+      <section class="section" id="inventory">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Inventory Matrix</span>
+            <h2>Compressed source inventory for planning, estimation, and handoff</h2>
+          </div>
+          <p>
+            This matrix is the quick-reference sheet for PM and engineering review. It keeps the Massachusetts payer
+            list in one place with lives, claims rank, plan-split indicators, file count, volume, and direct entry
+            points.
+          </p>
+        </div>
+        <div class="inventory-grid">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Payer program</th>
+                  <th>MA size / claims signal</th>
+                  <th>Separate ingest?</th>
+                  <th>Plan split</th>
+                  <th>Files</th>
+                  <th>Volume</th>
+                  <th>Manifest entry</th>
+                  <th>Main note</th>
+                </tr>
+              </thead>
+              <tbody id="inventory-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="sources">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Primary Sources</span>
+            <h2>Landing pages, direct manifests, and market-size references</h2>
+          </div>
+          <p>
+            These are the source pages and PDFs that anchor the current report. They are included here so the page can
+            serve as both a planning artifact and a launchpad.
+          </p>
+        </div>
+        <div class="source-grid sources-list" id="sources-list"></div>
+        <p class="footnote">
+          Claims-priority ranking above comes from reachable CHIA APCD CY2024 medical-claims user-workgroup material.
+          Exact raw claim counts were not exposed in a machine-readable form from this environment, so this dashboard
+          deliberately uses rank instead of a fabricated number.
+        </p>
+      </section>
+    </main>
+
+    <script>
+      const colors = {
+        navy: "#173a52",
+        teal: "#0d766e",
+        amber: "#a65d09",
+        brick: "#a03a15",
+        olive: "#556529",
+        plum: "#65406e",
+        slate: "#70818a",
+        line: "#d9ccb8",
+      };
+
+      const payors = [
+        {
+          key: "bcbs-hmo",
+          name: "BCBSMA HMO Blue",
+          legal: "Blue Cross and Blue Shield of Massachusetts HMO Blue, Inc.",
+          coveredLives: 163833,
+          claimsRank: "#2",
+          separateIngest: "Yes, separate monthly TOC from BCBSMA Inc",
+          structuresLabel: "24 reporting structures",
+          planRefs: 3630,
+          uniquePlanNames: 231,
+          uniquePlanIds: 17,
+          planIdTypes: "3,520 EIN / 110 HIOS",
+          fileCount: 686,
+          inNetworkFiles: 683,
+          allowedFiles: 3,
+          volumeGb: 1148.635,
+          lastUpdated: "2026-02-23",
+          status: "Ready now",
+          statusTone: "ready",
+          mainNote: "Largest resolved regional source after BCBSMA Inc; API-backed site supports EIN and HIOS lookups for QA.",
+          landingPage: { label: "BCBSMA landing", url: "https://transparency-in-coverage.bluecrossma.com/" },
+          manifestLinks: [
+            {
+              label: "HMO Blue TOC",
+              url: "https://transparency-in-coverage.bluecrossma.com/2026-03-01_Blue-Cross-and-Blue-Shield-of-Massachusetts-HMO-Blue-Inc_index.json",
+            },
+          ],
+          chartMode: "files",
+          chartSegments: [
+            { label: "In-network", value: 683, color: colors.teal },
+            { label: "Allowed amount", value: 3, color: colors.amber },
+          ],
+        },
+        {
+          key: "bcbs-inc",
+          name: "BCBSMA Inc",
+          legal: "Blue Cross and Blue Shield of Massachusetts, Inc.",
+          coveredLives: null,
+          claimsRank: "BCBSMA family #2",
+          separateIngest: "Yes, separate monthly TOC required for full BCBSMA coverage",
+          structuresLabel: "34 reporting structures",
+          planRefs: 1197,
+          uniquePlanNames: 1197,
+          uniquePlanIds: 412,
+          planIdTypes: "1,197 EIN",
+          fileCount: 695,
+          inNetworkFiles: 691,
+          allowedFiles: 4,
+          volumeGb: 1178.213,
+          lastUpdated: "2026-02-23",
+          status: "Ready now",
+          statusTone: "ready",
+          mainNote: "This is the other half of the BCBSMA burden. Combined BCBSMA current footprint is 1,381 files and 2.327 TB.",
+          landingPage: { label: "BCBSMA landing", url: "https://transparency-in-coverage.bluecrossma.com/" },
+          manifestLinks: [
+            {
+              label: "BCBSMA Inc TOC",
+              url: "https://transparency-in-coverage.bluecrossma.com/2026-03-01_Blue-Cross-and-Blue-Shield-of-Massachusetts-Inc_index.json",
+            },
+          ],
+          chartMode: "files",
+          chartSegments: [
+            { label: "In-network", value: 691, color: colors.teal },
+            { label: "Allowed amount", value: 4, color: colors.amber },
+          ],
+        },
+        {
+          key: "tufts",
+          name: "Tufts Health Public Plans",
+          legal: "Point32Health regional public-plan brand",
+          coveredLives: 211057,
+          claimsRank: "#5",
+          separateIngest: "Yes, separate from Harvard Pilgrim despite shared parent",
+          structuresLabel: "3 reporting structures",
+          planRefs: 26616,
+          uniquePlanNames: 26596,
+          uniquePlanIds: 17749,
+          planIdTypes: "26,545 EIN / 71 HIOS",
+          fileCount: 5,
+          inNetworkFiles: 3,
+          allowedFiles: 2,
+          volumeGb: 0.027,
+          lastUpdated: "2026-02-26",
+          status: "Ready now",
+          statusTone: "ready",
+          mainNote: "Very large Massachusetts membership with almost no storage burden because many plans roll into a tiny file set.",
+          landingPage: {
+            label: "Tufts machine-readable page",
+            url: "https://tuftshealthplan.com/legal-notices/machine-readable-files",
+          },
+          manifestLinks: [
+            { label: "Tufts plan list", url: "https://eusprdtransparencymrfp32.z13.web.core.windows.net/thp" },
+            {
+              label: "Tufts TOC",
+              url: "https://eusprdtransparencymrfp32.blob.core.windows.net/thp/2026-03-01_TuftsHealthPublicPlansInc_index.json",
+            },
+          ],
+          chartMode: "files",
+          chartSegments: [
+            { label: "In-network", value: 3, color: colors.teal },
+            { label: "Allowed amount", value: 2, color: colors.amber },
+          ],
+        },
+        {
+          key: "harvard",
+          name: "Harvard Pilgrim / HPIC",
+          legal: "Harvard Pilgrim Health Care, Inc. plus HPHC Insurance Company manifests",
+          coveredLives: 99162,
+          claimsRank: "#3",
+          separateIngest: "Yes, requires consolidation across many plan-specific TOCs",
+          structuresLabel: "127 current TOCs",
+          planRefs: 288,
+          uniquePlanNames: 205,
+          uniquePlanIds: 86,
+          planIdTypes: "66 HPHC / 57 HPIC / 4 other TOCs",
+          fileCount: 118,
+          inNetworkFiles: 64,
+          allowedFiles: 54,
+          volumeGb: 5.895,
+          lastUpdated: "Current March 2026 plan list",
+          status: "Ready now",
+          statusTone: "ready",
+          mainNote: "Operational complexity is manifest sprawl, not bytes. The first dependency is a plan-list crawler.",
+          landingPage: {
+            label: "Harvard Pilgrim machine-readable page",
+            url: "https://www.harvardpilgrim.org/public/machine-readable-files",
+          },
+          manifestLinks: [
+            { label: "Harvard plan list", url: "https://eusprdtransparencymrfp32.z13.web.core.windows.net/hphc" },
+          ],
+          chartMode: "files",
+          chartSegments: [
+            { label: "In-network", value: 64, color: colors.teal },
+            { label: "Allowed amount", value: 54, color: colors.amber },
+          ],
+        },
+        {
+          key: "wellsense",
+          name: "WellSense Health Plan",
+          legal: "Boston Medical Center Health Plan legacy carrier",
+          coveredLives: 111018,
+          claimsRank: "#4",
+          separateIngest: "Yes, published index URL but unresolved from this environment",
+          structuresLabel: "Unknown from terminal",
+          planRefs: null,
+          uniquePlanNames: null,
+          uniquePlanIds: null,
+          planIdTypes: "Index published, plan counts not retrievable here",
+          fileCount: null,
+          inNetworkFiles: null,
+          allowedFiles: null,
+          volumeGb: null,
+          lastUpdated: "Index URL published on source page",
+          status: "Blocked",
+          statusTone: "blocked",
+          mainNote: "High-priority blocker because it ranks fourth on claims signal and has six-figure Massachusetts membership.",
+          landingPage: {
+            label: "WellSense machine-readable page",
+            url: "https://www.wellsense.org/about-us/machine-readable-data",
+          },
+          manifestLinks: [
+            {
+              label: "Published index URL",
+              url: "https://connect.wellsense.org:8443/NHACA_MRF/data/cms-data-index.json",
+            },
+          ],
+          chartMode: "blocked",
+          chartSegments: [{ label: "Unresolved", value: 1, color: colors.brick }],
+        },
+        {
+          key: "mgb",
+          name: "Mass General Brigham Health Plan",
+          legal: "Formerly AllWays Health Partners",
+          coveredLives: 65049,
+          claimsRank: "Not visible in reachable top-16 excerpt",
+          separateIngest: "Yes, own base JSON plus vendor-linked subfiles",
+          structuresLabel: "6 reporting structures",
+          planRefs: 530,
+          uniquePlanNames: 368,
+          uniquePlanIds: 2,
+          planIdTypes: "530 EIN references",
+          fileCount: 20,
+          inNetworkFiles: 14,
+          allowedFiles: 6,
+          volumeGb: 0.362,
+          lastUpdated: "2026-02-27",
+          status: "Ready now",
+          statusTone: "ready",
+          mainNote: "Source mixes native MGB assets with vendor-hosted files. It should be treated as a carrier plus vendor-mapping problem.",
+          landingPage: {
+            label: "MGB transparency page",
+            url: "https://massgeneralbrighamhealthplan.org/meet-us/transparency-regulations",
+          },
+          manifestLinks: [
+            {
+              label: "MGB base JSON",
+              url: "https://massgeneralbrighamhealthplan.org/pricetransparency/MRF/Base",
+            },
+          ],
+          chartMode: "files",
+          chartSegments: [
+            { label: "In-network", value: 14, color: colors.teal },
+            { label: "Allowed amount", value: 6, color: colors.amber },
+          ],
+        },
+        {
+          key: "hne",
+          name: "Health New England",
+          legal: "Western Massachusetts regional carrier",
+          coveredLives: 24607,
+          claimsRank: "#11",
+          separateIngest: "Yes, source appears to require browser-backed portal access",
+          structuresLabel: "Unknown from terminal",
+          planRefs: null,
+          uniquePlanNames: null,
+          uniquePlanIds: null,
+          planIdTypes: "Locked HealthSparq flow",
+          fileCount: null,
+          inNetworkFiles: null,
+          allowedFiles: null,
+          volumeGb: null,
+          lastUpdated: "Current access path verified from Mass.gov",
+          status: "Blocked",
+          statusTone: "blocked",
+          mainNote: "This was a natural pilot candidate in tic.md, but source resolution still needs a browser-backed capture path.",
+          landingPage: {
+            label: "Mass.gov GIC plan page",
+            url: "https://www.mass.gov/info-details/gic-non-medicare-health-plans",
+          },
+          manifestLinks: [
+            {
+              label: "HealthSparq access path",
+              url: "https://healthnewengland.healthsparq.com/healthsparq/public/#/one/city=&state=&postalCode=&country=&insurerCode=HNE_I&brandCode=HNE/machine-readable-transparency-in-coverage?searchTerm=046002284&lock=true",
+            },
+          ],
+          chartMode: "blocked",
+          chartSegments: [{ label: "Unresolved", value: 1, color: colors.brick }],
+        },
+        {
+          key: "fallon",
+          name: "Fallon Community Health Plan",
+          legal: "Central Massachusetts regional carrier",
+          coveredLives: 12815,
+          claimsRank: "#7",
+          separateIngest: "Yes, standalone monthly TOC",
+          structuresLabel: "1 reporting structure",
+          planRefs: 35,
+          uniquePlanNames: 8,
+          uniquePlanIds: 35,
+          planIdTypes: "35 HIOS references",
+          fileCount: 6,
+          inNetworkFiles: 5,
+          allowedFiles: 1,
+          volumeGb: 0.953,
+          lastUpdated: "2026-03-01",
+          status: "Ready now",
+          statusTone: "ready",
+          mainNote: "Good pilot-sized source, but one allowed-amount location resolves to the homepage instead of a file and needs override logic.",
+          landingPage: { label: "Fallon MRF hub", url: "https://fallon.sapphiremrfhub.com" },
+          manifestLinks: [
+            {
+              label: "Fallon TOC",
+              url: "https://fallon.sapphiremrfhub.com/tocs/202603/2026-03-01_fallon-health_index.json",
+            },
+          ],
+          chartMode: "files",
+          chartSegments: [
+            { label: "In-network", value: 5, color: colors.teal },
+            { label: "Allowed amount", value: 1, color: colors.amber },
+          ],
+        },
+      ];
+
+      const groupedInputs = {
+        bcbs: { files: 1381, volumeGb: 2326.848 },
+        point32: { files: 123, volumeGb: 5.922 },
+        smallReady: { files: 26, volumeGb: 1.315 },
+        readyAll: { files: 1530, volumeGb: 2334.085 },
+      };
+
+      const estimates = [
+        {
+          value: "12-16 eng-weeks",
+          label: "Regional production effort",
+          detail:
+            "This covers the Massachusetts regional set end to end: source registry, raw acquisition, Unified normalization, Redshift serving marts, orchestration, QA, and a blocker lane for WellSense and HNE.",
+          tone: "tone-teal",
+        },
+        {
+          value: "6-8 calendar weeks",
+          label: "Likely duration with 2 elite engineers + agents",
+          detail:
+            "This is the realistic full-scope estimate on the current m-alpha stack. Agentic models compress boilerplate and test generation, but they do not eliminate download time, source drift, or blocked-source resolution.",
+          tone: "tone-navy",
+        },
+        {
+          value: "3-4 weeks",
+          label: "Time to first internal Massachusetts MVP",
+          detail:
+            "Ready carriers only: BCBSMA, Tufts, Harvard Pilgrim, MGB, and Fallon. Includes raw landing, file ledger, Unified metadata, and Redshift inventory summaries.",
+          tone: "tone-amber",
+        },
+        {
+          value: "9-11 weeks",
+          label: "If blocked-source automation and national filtering are included",
+          detail:
+            "This longer band assumes you also automate WellSense and Health New England capture paths and add the first Massachusetts-filtered national-carrier sources in the same stream of work.",
+          tone: "tone-brick",
+        },
+      ];
+
+      const architectureCards = [
+        {
+          title: "Raw layer fit",
+          tone: "tone-teal",
+          body:
+            "Follow the existing source pattern and create a self-contained `pipeline/sources/tic/` module. Raw ingest should stay pure Python and land TOCs, file ledgers, and raw MRF payloads into S3 the same way NPPES lands raw files today.",
+          bullets: [
+            "Use the current source convention: config.py, ingest.py, transform.py, README.md",
+            "Extend the existing manifest helper because TiC needs a child-file ledger, not just latest_version",
+            "Store per-file status, content-length, checksum, source URL, payer, file type, and run date in raw storage",
+          ],
+        },
+        {
+          title: "Unified Iceberg fit",
+          tone: "tone-navy",
+          body:
+            "The real TiC working layer belongs in Unified Iceberg. This is where the nested Schema 2.0 content should be normalized so Spark can handle the scale and partitioning pressure before anything is served downstream.",
+          bullets: [
+            "Recommended Unified tables: tic_manifest, tic_reporting_structure, tic_reporting_plan, tic_provider_reference, tic_in_network_rate, tic_allowed_amount",
+            "Partition by payer, run month, and file family before thinking about Redshift projections",
+            "Keep full granular rate facts in Iceberg even if only summarized marts go to Redshift",
+          ],
+        },
+        {
+          title: "Redshift serving boundary",
+          tone: "tone-olive",
+          body:
+            "Redshift should stay the serving and analytics layer, not the first place you explode every raw negotiated-rate row. Use the existing COPY plus atomic-swap pattern for smaller curated marts only.",
+          bullets: [
+            "Good Redshift targets: consolidated.tic_file_inventory, consolidated.tic_plan_registry, aggregate.tic_ma_payor_month, aggregate.tic_ma_cpt_benchmark",
+            "Bad first target: a full unbounded row-level negotiated-rate fact table for every payer file",
+            "Reuse the current S3 parquet staging and atomic rename pattern already used by consolidated.practice and consolidated.provider",
+          ],
+        },
+        {
+          title: "Glossary: allowed amount",
+          tone: "tone-plum",
+          body:
+            "In TiC, allowed amount is the historical out-of-network amount the insurer treated as payable for a claim. It is not the provider billed charge and not the in-network negotiated rate.",
+          bullets: [
+            "Billed charge = what the provider submitted",
+            "Allowed amount = what the payer accepted as payable historically out of network",
+            "In-network rate = the contractual negotiated amount published in the in-network files",
+          ],
+        },
+      ];
+
+      const prs = [
+        {
+          id: "PR1",
+          title: "TiC source foundation and richer file-ledger primitives",
+          duration: "2-3 days",
+          owners: "Engineer A",
+          tone: "tone-teal",
+          summary:
+            "Create the new TiC source skeleton and extend the manifest model. The current shared manifest helper only understands `latest_version`, which is too thin for a source family with 1,500+ child files and monthly diffs.",
+          outcome:
+            "A TiC source can version runs, track every discovered file, record content-length and status, and support idempotent reruns.",
+          files: [
+            "pipeline/sources/tic/README.md",
+            "pipeline/sources/tic/config.py",
+            "pipeline/base/malpha_common/manifest.py",
+            "pipeline/base/malpha_common/file_ledger.py",
+            "pipeline/tests/unit/base/malpha_common/test_file_ledger.py",
+            "pipeline/tests/unit/sources/tic/test_config.py",
+            "pipeline/sources/README.md",
+          ],
+        },
+        {
+          id: "PR2",
+          title: "Ready-source raw ingest adapters for Massachusetts regional payers",
+          duration: "4-6 days",
+          owners: "Engineer A with Engineer B review",
+          tone: "tone-navy",
+          summary:
+            "Implement pure-Python discovery and raw landing for BCBSMA, Tufts, Harvard Pilgrim, Fallon, and MGB. Tufts and Harvard stay separate under one TiC source family because their source mechanics differ materially.",
+          outcome:
+            "Current-month manifests and raw files land deterministically in raw storage with payer labels, file type labels, and download audit status.",
+          files: [
+            "pipeline/sources/tic/ingest.py",
+            "pipeline/sources/tic/payors/bcbsma.py",
+            "pipeline/sources/tic/payors/point32.py",
+            "pipeline/sources/tic/payors/fallon.py",
+            "pipeline/sources/tic/payors/mgb.py",
+            "pipeline/tests/unit/sources/tic/test_ingest.py",
+            "pipeline/tests/fixtures/handcrafted/tic/",
+          ],
+        },
+        {
+          id: "PR3",
+          title: "Blocked-source override lane for WellSense and Health New England",
+          duration: "3-5 days plus external waiting",
+          owners: "Engineer A",
+          tone: "tone-brick",
+          summary:
+            "Do not block the whole Massachusetts program on browser-gated or timing-out carriers. Add a formal override lane so blocked manifests can be captured and versioned without contaminating the happy path.",
+          outcome:
+            "WellSense and HNE can enter the monthly run through managed snapshot manifests while automation catches up.",
+          files: [
+            "pipeline/sources/tic/blocked_sources.py",
+            "pipeline/sources/tic/manual_overrides.json",
+            "pipeline/tests/unit/sources/tic/test_blocked_sources.py",
+            "scripts/tic_capture_manifest.py",
+            "pipeline/sources/tic/README.md",
+          ],
+        },
+        {
+          id: "PR4",
+          title: "Unified TiC normalization in Iceberg",
+          duration: "6-8 days",
+          owners: "Engineer B",
+          tone: "tone-amber",
+          summary:
+            "Normalize Schema 2.0 TiC content into Iceberg tables instead of shoving raw nested payloads toward Redshift. This is the real core engineering work for TiC on the current architecture.",
+          outcome:
+            "Spark can query TiC manifests, plans, provider references, in-network rates, and allowed amounts in a consistent Unified shape.",
+          files: [
+            "pipeline/sources/tic/transform.py",
+            "pipeline/sources/tic/schemas.py",
+            "pipeline/sources/tic/partitioning.py",
+            "pipeline/tests/unit/sources/tic/test_transform.py",
+            "pipeline/tests/integration/sources/tic/test_transform_integration.py",
+          ],
+        },
+        {
+          id: "PR5",
+          title: "Redshift serving marts for inventory and Massachusetts market analytics",
+          duration: "4-5 days",
+          owners: "Engineer B",
+          tone: "tone-olive",
+          summary:
+            "Create small, useful Redshift tables that fit the existing serving model: file inventories, plan registries, payer-month rollups, and benchmark marts. Keep the full raw rate facts in Iceberg.",
+          outcome:
+            "PM, analytics, and applications can query a fast Massachusetts-serving layer without turning Redshift into a raw TiC lake.",
+          files: [
+            "pipeline/consolidated/tic_market/config.py",
+            "pipeline/consolidated/tic_market/build.py",
+            "pipeline/consolidated/tic_market/redshift.py",
+            "pipeline/aggregate/tic_market_summary/config.py",
+            "pipeline/aggregate/tic_market_summary/build.py",
+            "pipeline/tests/unit/consolidated/tic_market/test_build.py",
+          ],
+        },
+        {
+          id: "PR6",
+          title: "Glue jobs, orchestration, and deployment wiring",
+          duration: "2-3 days",
+          owners: "Engineer A",
+          tone: "tone-plum",
+          summary:
+            "Wire TiC into the existing deployment model: Glue Python Shell for raw ingest, Glue Spark for transform and serving builds, and Step Functions orchestration beside the current NPPES, MIPS, and PECOS chains.",
+          outcome:
+            "TiC becomes a first-class pipeline branch that deploys with CDK and runs with the same environment model as the rest of m-alpha.",
+          files: [
+            "infra/cdk/lib/constructs/tic-jobs.ts",
+            "infra/cdk/lib/constructs/consolidated-tic-jobs.ts",
+            "infra/cdk/lib/stacks/pipeline-stack.ts",
+            "infra/cdk/lib/constructs/pipeline-orchestration.ts",
+            "pipeline/README.md",
+          ],
+        },
+        {
+          id: "PR7",
+          title: "BCBS hardening, monthly diffs, QA, and runbooks",
+          duration: "4-5 days",
+          owners: "Both engineers",
+          tone: "tone-navy",
+          summary:
+            "Harden the highest-volume carrier, add drift detection, validate count and byte deltas, and document the monthly operating rhythm. This is the difference between a demo and a pipeline.",
+          outcome:
+            "Massachusetts TiC runs become repeatable, explainable, and safe to hand over beyond the two initial implementers.",
+          files: [
+            "pipeline/tests/integration/sources/tic/",
+            "pipeline/tests/integration/consolidated/tic_market/",
+            "scripts/tic_monthly_diff.py",
+            "pipeline/README.md",
+            "pipeline/sources/tic/README.md",
+            "docs/tic-ma-roadmap.md",
+          ],
+        },
+        {
+          id: "PR8",
+          title: "Optional expansion: national carriers with Massachusetts filtering",
+          duration: "5-7 days",
+          owners: "Both engineers",
+          tone: "tone-amber",
+          summary:
+            "Only after the regional set is stable, add UHC, Aetna, and Cigna with a Massachusetts geography filter. This is optional for the first Massachusetts regional release but should be the next logical expansion.",
+          outcome:
+            "National carriers extend coverage without forcing the platform to ingest national-universe noise into storage and compute.",
+          files: [
+            "pipeline/sources/tic/payors/national.py",
+            "pipeline/sources/tic/transform.py",
+            "pipeline/aggregate/tic_market_summary/build.py",
+            "pipeline/tests/unit/sources/tic/test_national_filtering.py",
+          ],
+        },
+      ];
+
+      const phases = [
+        {
+          number: 1,
+          title: "Freeze the source registry",
+          dates: "March 26-27, 2026",
+          goal: "Lock all current Massachusetts regional manifests into a canonical registry before any downloader work begins.",
+          tone: "tone-teal",
+          tags: ["Ready source capture", "No blockers on core six programs"],
+          tasks: [
+            {
+              id: "1.1",
+              owner: "Data Eng",
+              title: "Pin BCBSMA manifests",
+              scope: "Capture and version the current BCBSMA HMO Blue and BCBSMA Inc TOCs.",
+              inputs: `${groupedInputs.bcbs.files.toLocaleString("en-US")} files / ${groupedInputs.bcbs.volumeGb.toFixed(3)} GB`,
+              links: [
+                payors[0].landingPage,
+                ...payors[0].manifestLinks,
+                ...payors[1].manifestLinks,
+              ],
+              exit: "Both BCBS manifests versioned with monthly naming logic documented and validated.",
+              status: "Ready",
+              statusTone: "ready",
+            },
+            {
+              id: "1.2",
+              owner: "Data Eng",
+              title: "Pin Point32 manifests",
+              scope: "Capture Tufts TOC plus Harvard plan-list source that expands into 127 current TOCs.",
+              inputs: `${groupedInputs.point32.files.toLocaleString("en-US")} files / ${groupedInputs.point32.volumeGb.toFixed(3)} GB`,
+              links: [
+                payors[2].landingPage,
+                ...payors[2].manifestLinks,
+                payors[3].landingPage,
+                ...payors[3].manifestLinks,
+              ],
+              exit: "One registry entry for Tufts and one crawler-backed registry entry for Harvard Pilgrim / HPIC.",
+              status: "Ready",
+              statusTone: "ready",
+            },
+            {
+              id: "1.3",
+              owner: "Data Eng",
+              title: "Pin MGB and Fallon manifests",
+              scope: "Capture smaller ready regional sources and note current source defects.",
+              inputs: `${groupedInputs.smallReady.files.toLocaleString("en-US")} files / ${groupedInputs.smallReady.volumeGb.toFixed(3)} GB`,
+              links: [
+                payors[5].landingPage,
+                ...payors[5].manifestLinks,
+                payors[7].landingPage,
+                ...payors[7].manifestLinks,
+              ],
+              exit: "Both registry entries created and Fallon malformed allowed-amount location documented as an exception.",
+              status: "Ready",
+              statusTone: "ready",
+            },
+            {
+              id: "1.4",
+              owner: "Platform",
+              title: "Open blocker tickets for unresolved sources",
+              scope: "Create reproducible access notes for WellSense timeouts and Health New England portal gating.",
+              inputs: "2 blocked payor programs / file counts TBD",
+              links: [
+                payors[4].landingPage,
+                ...payors[4].manifestLinks,
+                payors[6].landingPage,
+                ...payors[6].manifestLinks,
+              ],
+              exit: "Two blocker tickets exist with screenshots or curl traces and a proposed remediation path.",
+              status: "Blocked",
+              statusTone: "blocked",
+            },
+          ],
+        },
+        {
+          number: 2,
+          title: "Build the acquisition adapters",
+          dates: "March 30-April 3, 2026",
+          goal: "Create carrier-specific fetch logic so manifest discovery and file download do not get conflated.",
+          tone: "tone-navy",
+          tags: ["Adapter build", "High-volume transfer"],
+          tasks: [
+            {
+              id: "2.1",
+              owner: "Platform",
+              title: "Build the BCBSMA high-volume adapter",
+              scope: "Separate BCBSMA into its own queue with retries, size capture, and transfer throttling.",
+              inputs: `${groupedInputs.bcbs.files.toLocaleString("en-US")} files / ${groupedInputs.bcbs.volumeGb.toFixed(3)} GB`,
+              links: [payors[0].landingPage, ...payors[0].manifestLinks, ...payors[1].manifestLinks],
+              exit: "BCBS current month can be enumerated, checksummed, and queued without manual URL handling.",
+              status: "Ready",
+              statusTone: "ready",
+            },
+            {
+              id: "2.2",
+              owner: "Data Eng",
+              title: "Build the Point32 crawler and downloader",
+              scope: "Handle Tufts as a direct TOC and Harvard as a plan-list expansion into many TOCs.",
+              inputs: "1 Tufts TOC + 127 Harvard TOCs / 123 files / 5.922 GB",
+              links: [payors[2].landingPage, ...payors[2].manifestLinks, payors[3].landingPage, ...payors[3].manifestLinks],
+              exit: "A single command emits a normalized file ledger for both Point32 brands without mixing them together.",
+              status: "Ready",
+              statusTone: "ready",
+            },
+            {
+              id: "2.3",
+              owner: "Data Eng",
+              title: "Build MGB and Fallon adapters",
+              scope: "Ingest smaller ready sources and validate outbound vendor links and malformed URLs.",
+              inputs: `${groupedInputs.smallReady.files.toLocaleString("en-US")} files / ${groupedInputs.smallReady.volumeGb.toFixed(3)} GB`,
+              links: [payors[5].landingPage, ...payors[5].manifestLinks, payors[7].landingPage, ...payors[7].manifestLinks],
+              exit: "Both carriers download successfully and Fallon bad-link exception is transformed into a deterministic warning.",
+              status: "Ready",
+              statusTone: "ready",
+            },
+            {
+              id: "2.4",
+              owner: "Platform",
+              title: "Create raw storage and ledger partitions",
+              scope: "Store all raw outputs by payer, run date, file type, and source manifest version.",
+              inputs: `${groupedInputs.readyAll.files.toLocaleString("en-US")} known files / ${groupedInputs.readyAll.volumeGb.toFixed(3)} GB`,
+              links: [],
+              exit: "Raw bucket layout, file ledger schema, and content-length audit columns are in place.",
+              status: "Next",
+              statusTone: "next",
+            },
+          ],
+        },
+        {
+          number: 3,
+          title: "Run the first full regional acquisition",
+          dates: "April 6-10, 2026",
+          goal: "Move from source discovery to a complete current-month pull for every currently enumerable regional payer program.",
+          tone: "tone-amber",
+          tags: ["First full pull", "Reconciliation"],
+          tasks: [
+            {
+              id: "3.1",
+              owner: "Platform",
+              title: "Download and reconcile BCBSMA",
+              scope: "Run the first production-grade pull for both BCBSMA manifests and reconcile all URLs against the ledger.",
+              inputs: `${groupedInputs.bcbs.files.toLocaleString("en-US")} files / ${groupedInputs.bcbs.volumeGb.toFixed(3)} GB`,
+              links: [...payors[0].manifestLinks, ...payors[1].manifestLinks],
+              exit: "All BCBS files either land successfully or appear in an explicit exception report with retry status.",
+              status: "Next",
+              statusTone: "next",
+            },
+            {
+              id: "3.2",
+              owner: "Data Eng",
+              title: "Download Point32, MGB, and Fallon",
+              scope: "Complete the rest of the ready regional set once the adapters are in place.",
+              inputs: "149 files / 7.237 GB",
+              links: [...payors[2].manifestLinks, ...payors[3].manifestLinks, ...payors[5].manifestLinks, ...payors[7].manifestLinks],
+              exit: "Tufts, Harvard, MGB, and Fallon all show manifest-to-file reconciliation at the URL level.",
+              status: "Next",
+              statusTone: "next",
+            },
+            {
+              id: "3.3",
+              owner: "Analyst",
+              title: "Publish the first Massachusetts file ledger",
+              scope: "Summarize counts, volume, missing files, source defects, and unresolved carriers in one canonical inventory.",
+              inputs: `${groupedInputs.readyAll.files.toLocaleString("en-US")} known files / ${groupedInputs.readyAll.volumeGb.toFixed(3)} GB plus 2 blocked sources`,
+              links: [],
+              exit: "One reviewable ledger exists for PM, engineering, and analytics handoff.",
+              status: "Next",
+              statusTone: "next",
+            },
+          ],
+        },
+        {
+          number: 4,
+          title: "Resolve blocked regional sources",
+          dates: "April 13-17, 2026",
+          goal: "Complete the Massachusetts regional set by unblocking WellSense and Health New England and codifying source exceptions.",
+          tone: "tone-brick",
+          tags: ["Access blockers", "Browser-backed extraction"],
+          tasks: [
+            {
+              id: "4.1",
+              owner: "Platform",
+              title: "Clear the WellSense index timeout",
+              scope: "Test alternate network paths, browser-based retrieval, or session-aware fetch to access the published JSON index.",
+              inputs: "111,018 covered lives / claims rank #4 / file count TBD",
+              links: [payors[4].landingPage, ...payors[4].manifestLinks],
+              exit: "WellSense file count, file URLs, and current byte estimate are measured and added to the ledger.",
+              status: "Blocked",
+              statusTone: "blocked",
+            },
+            {
+              id: "4.2",
+              owner: "Platform",
+              title: "Automate Health New England portal capture",
+              scope: "Convert the current HealthSparq access path into a repeatable browser-backed manifest extraction step.",
+              inputs: "24,607 covered lives / claims rank #11 / file count TBD",
+              links: [payors[6].landingPage, ...payors[6].manifestLinks],
+              exit: "HNE manifest URLs can be reproduced monthly without a manual browser session.",
+              status: "Blocked",
+              statusTone: "blocked",
+            },
+            {
+              id: "4.3",
+              owner: "Data Eng",
+              title: "Codify source exceptions",
+              scope: "Promote Fallon malformed allowed-amount links and other source issues into explicit exception rules.",
+              inputs: "Known defect catalog from phases 1-3",
+              links: [...payors[7].manifestLinks],
+              exit: "Source defects no longer fail silently; each one becomes a named warning or override path.",
+              status: "Next",
+              statusTone: "next",
+            },
+          ],
+        },
+        {
+          number: 5,
+          title: "Normalize, QA, and publish canonical structures",
+          dates: "April 20-24, 2026",
+          goal: "Move beyond raw file acquisition into consistent Schema 2.0 parsing, plan mapping, and completeness checks.",
+          tone: "tone-olive",
+          tags: ["Schema 2.0", "Quality controls"],
+          tasks: [
+            {
+              id: "5.1",
+              owner: "Data Eng",
+              title: "Build the Schema 2.0 parser",
+              scope: "Parse reporting structures, plan references, provider references, and file-level metadata into normalized tables.",
+              inputs: "All current ready carriers plus later blocked-source outputs",
+              links: [],
+              exit: "Every file produces a consistent parser output with source manifest lineage preserved.",
+              status: "Next",
+              statusTone: "next",
+            },
+            {
+              id: "5.2",
+              owner: "Analyst",
+              title: "Create the plan crosswalk",
+              scope: "Map plan names, HIOS, EIN, carrier license, and parent brand into one Massachusetts payer-plan dictionary.",
+              inputs: "Current plan topology from BCBSMA, Point32, MGB, Fallon, and later WellSense/HNE",
+              links: [],
+              exit: "The team can answer which plans are separate ingestion units and which are just manifest references.",
+              status: "Next",
+              statusTone: "next",
+            },
+            {
+              id: "5.3",
+              owner: "Platform",
+              title: "Add completeness and drift checks",
+              scope: "Compare manifest count, downloaded file count, content-length, and parser output counts on every run.",
+              inputs: "File ledger plus parser output tables",
+              links: [],
+              exit: "Monthly runs raise alerts when carrier counts or bytes drift unexpectedly.",
+              status: "Next",
+              statusTone: "next",
+            },
+          ],
+        },
+        {
+          number: 6,
+          title: "Move to monthly operations and selective expansion",
+          dates: "April 27-May 1, 2026",
+          goal: "Turn one-time ingestion into an operating rhythm, then expand carefully to national carriers with Massachusetts-only filtering.",
+          tone: "tone-plum",
+          tags: ["Monthly ops", "National backlog"],
+          tasks: [
+            {
+              id: "6.1",
+              owner: "Platform",
+              title: "Calendarize the monthly refresh",
+              scope: "Run after each monthly manifest release, diff TOCs, and publish a fresh Massachusetts source ledger.",
+              inputs: "Monthly regional payer manifests",
+              links: [],
+              exit: "A runbook exists with exact trigger dates, retries, and reporting outputs.",
+              status: "Next",
+              statusTone: "next",
+            },
+            {
+              id: "6.2",
+              owner: "Analyst",
+              title: "Replace claims rank with exact APCD counts when licensed",
+              scope: "Upgrade payer priority from public rank signal to exact claim volume once CHIA data access is available.",
+              inputs: "CHIA APCD access, payer mapping crosswalk",
+              links: [],
+              exit: "The program can prioritize ingest based on exact Massachusetts claim counts instead of rank.",
+              status: "Next",
+              statusTone: "next",
+            },
+            {
+              id: "6.3",
+              owner: "Data Eng",
+              title: "Start national-carrier expansion with a Massachusetts filter",
+              scope: "Bring in UHC, Aetna, and Cigna only after the regional set is stable, and filter to Massachusetts providers plus border leakage.",
+              inputs: "Regional set stable; geographic filtering strategy approved",
+              links: [
+                { label: "UHC TiC", url: "https://transparency-in-coverage.uhc.com/" },
+                { label: "Aetna TiC", url: "https://www.aetna.com/insurance-producer/transparency-in-coverage.html" },
+                { label: "Cigna TiC", url: "https://www.cigna.com/legal/compliance/machine-readable-files" },
+              ],
+              exit: "National files do not overwhelm storage because only Massachusetts-relevant providers are retained.",
+              status: "Next",
+              statusTone: "next",
+            },
+          ],
+        },
+      ];
+
+      const sources = [
+        {
+          label: "Meroka m-alpha repo (architecture reference)",
+          url: "https://github.com/MerokaInc/m-alpha/",
+        },
+        {
+          label: "Massachusetts DOI: 2024 market share of MA covered lives by carrier license",
+          url: "https://www.mass.gov/doc/2024-market-share-of-ma-covered-lives-compared-with-2023-reported-covered-lives-by-carrier-license/download",
+        },
+        {
+          label: "BCBSMA machine-readable files landing page",
+          url: "https://transparency-in-coverage.bluecrossma.com/",
+        },
+        {
+          label: "Tufts Health Plan machine-readable files page",
+          url: "https://tuftshealthplan.com/legal-notices/machine-readable-files",
+        },
+        {
+          label: "Harvard Pilgrim machine-readable files page",
+          url: "https://www.harvardpilgrim.org/public/machine-readable-files",
+        },
+        {
+          label: "Fallon machine-readable files hub",
+          url: "https://fallon.sapphiremrfhub.com",
+        },
+        {
+          label: "Mass General Brigham Health Plan transparency page",
+          url: "https://massgeneralbrighamhealthplan.org/meet-us/transparency-regulations",
+        },
+        {
+          label: "WellSense machine-readable data page",
+          url: "https://www.wellsense.org/about-us/machine-readable-data",
+        },
+        {
+          label: "Mass.gov GIC non-Medicare plans page",
+          url: "https://www.mass.gov/info-details/gic-non-medicare-health-plans",
+        },
+        {
+          label: "UnitedHealthcare transparency in coverage landing page",
+          url: "https://transparency-in-coverage.uhc.com/",
+        },
+        {
+          label: "Aetna transparency in coverage page",
+          url: "https://www.aetna.com/insurance-producer/transparency-in-coverage.html",
+        },
+        {
+          label: "Cigna machine-readable files page",
+          url: "https://www.cigna.com/legal/compliance/machine-readable-files",
+        },
+      ];
+
+      const formatInt = (value) => {
+        if (value === null || value === undefined) return "TBD";
+        return new Intl.NumberFormat("en-US").format(value);
+      };
+
+      const formatGb = (value) => {
+        if (value === null || value === undefined) return "TBD";
+        return `${value.toLocaleString("en-US", {
+          minimumFractionDigits: 3,
+          maximumFractionDigits: 3,
+        })} GB`;
+      };
+
+      const formatTb = (value) => {
+        if (value === null || value === undefined) return "TBD";
+        return `${(value / 1000).toLocaleString("en-US", {
+          minimumFractionDigits: 3,
+          maximumFractionDigits: 3,
+        })} TB`;
+      };
+
+      const formatLives = (value) => {
+        if (value === null || value === undefined) return "No standalone DOI breakout";
+        return `${formatInt(value)} covered lives`;
+      };
+
+      const totalKnownFiles = payors.reduce((sum, item) => sum + (item.fileCount || 0), 0);
+      const totalKnownVolume = payors.reduce((sum, item) => sum + (item.volumeGb || 0), 0);
+      const readyPrograms = payors.filter((item) => item.fileCount !== null).length;
+      const blockedPrograms = payors.filter((item) => item.statusTone === "blocked").length;
+
+      const escapeHtml = (text) =>
+        String(text)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+
+      const gradientFor = (segments) => {
+        const total = segments.reduce((sum, item) => sum + item.value, 0);
+        if (!total) return `conic-gradient(${colors.line} 0 360deg)`;
+        let cursor = 0;
+        const parts = [];
+        segments.forEach((item) => {
+          const sweep = (item.value / total) * 360;
+          parts.push(`${item.color} ${cursor}deg ${cursor + sweep}deg`);
+          cursor += sweep;
+        });
+        return `conic-gradient(${parts.join(", ")})`;
+      };
+
+      const linkChips = (links) =>
+        links
+          .map(
+            (link) =>
+              `<a class="link-chip" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`,
+          )
+          .join("");
+
+      const renderSummary = () => {
+        const cards = [
+          {
+            value: formatInt(payors.length),
+            label: "Massachusetts payer programs tracked",
+          },
+          {
+            value: formatInt(readyPrograms),
+            label: "Programs fully enumerable from current manifests",
+          },
+          {
+            value: formatInt(totalKnownFiles),
+            label: "Known unique files in the first-pass regional set",
+          },
+          {
+            value: formatTb(totalKnownVolume),
+            label: "Known published volume in current ready sources",
+          },
+          {
+            value: formatInt(blockedPrograms),
+            label: "Blocked regional programs still missing exact file counts",
+          },
+        ];
+
+        document.getElementById("summary-grid").innerHTML = cards
+          .map(
+            (card, index) => `
+              <article class="card metric-card ${["tone-teal", "tone-navy", "tone-amber", "tone-olive", "tone-brick"][index]}">
+                <span class="value">${card.value}</span>
+                <span class="label">${card.label}</span>
+              </article>
+            `,
+          )
+          .join("");
+      };
+
+      const renderOverallVolumeChart = () => {
+        const known = payors.filter((item) => item.volumeGb !== null).sort((a, b) => b.volumeGb - a.volumeGb);
+        const segmentPalette = [colors.navy, colors.teal, colors.amber, colors.olive, colors.plum, colors.slate];
+        const segments = known.map((item, index) => ({
+          label: item.name,
+          value: item.volumeGb,
+          color: segmentPalette[index % segmentPalette.length],
+        }));
+        document.getElementById("overall-volume-donut").style.background = gradientFor(segments);
+        document.getElementById("overall-volume-value").textContent = formatTb(totalKnownVolume);
+        document.getElementById("overall-volume-legend").innerHTML = segments
+          .map((segment) => {
+            const share = ((segment.value / totalKnownVolume) * 100).toFixed(1);
+            return `
+              <div class="legend-row">
+                <span class="swatch" style="background:${segment.color};"></span>
+                <div class="legend-copy">
+                  <strong>${escapeHtml(segment.label)}</strong>
+                  <span>${formatGb(segment.value)} • ${share}% of known volume</span>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      };
+
+      const renderEstimate = () => {
+        document.getElementById("estimate-grid").innerHTML = estimates
+          .map(
+            (card) => `
+              <article class="card estimate-card ${card.tone}">
+                <span class="value">${escapeHtml(card.value)}</span>
+                <span class="label">${escapeHtml(card.label)}</span>
+                <p>${escapeHtml(card.detail)}</p>
+              </article>
+            `,
+          )
+          .join("");
+      };
+
+      const renderArchitecture = () => {
+        document.getElementById("architecture-grid").innerHTML = architectureCards
+          .map(
+            (card) => `
+              <article class="card ${card.tone}">
+                <h3>${escapeHtml(card.title)}</h3>
+                <p style="margin-top:10px;">${escapeHtml(card.body)}</p>
+                <div class="list-tight">
+                  ${card.bullets
+                    .map(
+                      (bullet) => `
+                        <div>
+                          ${escapeHtml(bullet)}
+                        </div>
+                      `,
+                    )
+                    .join("")}
+                </div>
+              </article>
+            `,
+          )
+          .join("");
+      };
+
+      const renderRoadmap = () => {
+        document.getElementById("pr-grid").innerHTML = prs
+          .map(
+            (pr) => `
+              <article class="card pr-card ${pr.tone}">
+                <div class="pr-top">
+                  <div style="display:flex; gap:14px; align-items:flex-start;">
+                    <div class="pr-id">${escapeHtml(pr.id)}</div>
+                    <div>
+                      <h3>${escapeHtml(pr.title)}</h3>
+                      <p style="margin-top:10px;">${escapeHtml(pr.summary)}</p>
+                      <div class="pr-meta">
+                        <span class="tag info">${escapeHtml(pr.duration)}</span>
+                        <span class="tag info">${escapeHtml(pr.owners)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="path-list">
+                  ${pr.files
+                    .map(
+                      (file) => `
+                        <div class="path-item">
+                          <code>${escapeHtml(file)}</code>
+                        </div>
+                      `,
+                    )
+                    .join("")}
+                </div>
+                <div class="list-tight">
+                  <div>
+                    <strong>Merge outcome</strong>
+                    ${escapeHtml(pr.outcome)}
+                  </div>
+                </div>
+              </article>
+            `,
+          )
+          .join("");
+      };
+
+      const renderPhases = () => {
+        document.getElementById("phase-stack").innerHTML = phases
+          .map(
+            (phase) => `
+              <article class="card phase-card ${phase.tone}">
+                <div class="phase-header">
+                  <div class="phase-number">${phase.number}</div>
+                  <div>
+                    <h3>${escapeHtml(phase.title)}</h3>
+                    <p style="margin-top:10px;">${escapeHtml(phase.goal)}</p>
+                    <div class="phase-meta">
+                      <span class="tag info">${escapeHtml(phase.dates)}</span>
+                      ${phase.tags.map((tag) => `<span class="tag info">${escapeHtml(tag)}</span>`).join("")}
+                    </div>
+                  </div>
+                </div>
+                <div class="phase-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Task</th>
+                        <th>Owner</th>
+                        <th>Scope</th>
+                        <th>Inputs</th>
+                        <th>Links</th>
+                        <th>Exit criteria</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${phase.tasks
+                        .map(
+                          (task) => `
+                            <tr>
+                              <td>
+                                <strong>${escapeHtml(task.id)} ${escapeHtml(task.title)}</strong>
+                              </td>
+                              <td>${escapeHtml(task.owner)}</td>
+                              <td>${escapeHtml(task.scope)}</td>
+                              <td>${escapeHtml(task.inputs)}</td>
+                              <td>${task.links.length ? `<div class="link-list">${linkChips(task.links)}</div>` : `<span style="color:var(--muted);">Internal deliverable</span>`}</td>
+                              <td>${escapeHtml(task.exit)}</td>
+                              <td><span class="tag ${task.statusTone}">${escapeHtml(task.status)}</span></td>
+                            </tr>
+                          `,
+                        )
+                        .join("")}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            `,
+          )
+          .join("");
+      };
+
+      const renderPayors = () => {
+        document.getElementById("payor-grid").innerHTML = payors
+          .map((payor, index) => {
+            const palette = ["tone-teal", "tone-navy", "tone-amber", "tone-plum", "tone-brick", "tone-olive"];
+            const chartTotal = payor.chartSegments.reduce((sum, segment) => sum + segment.value, 0);
+            const volumeShare =
+              payor.volumeGb !== null && totalKnownVolume > 0
+                ? `${((payor.volumeGb / totalKnownVolume) * 100).toFixed(1)}% of known volume`
+                : "Volume TBD";
+
+            return `
+              <article class="card payor-card ${palette[index % palette.length]}">
+                <div class="payor-top">
+                  <div>
+                    <h3>${escapeHtml(payor.name)}</h3>
+                    <p>${escapeHtml(payor.legal)}</p>
+                  </div>
+                  <span class="status-badge ${payor.statusTone === "blocked" ? "status-blocked" : "status-ready"}">${escapeHtml(payor.status)}</span>
+                </div>
+                <div class="payor-body">
+                  <div>
+                    <div class="donut" style="width:190px;height:190px;background:${gradientFor(payor.chartSegments)};">
+                      <div class="donut-hole">
+                        <strong>${payor.fileCount !== null ? formatInt(payor.fileCount) : "TBD"}</strong>
+                        <span>${payor.fileCount !== null ? "known files" : "file count unresolved"}</span>
+                      </div>
+                    </div>
+                    <div class="legend" style="margin-top:14px;">
+                      ${payor.chartSegments
+                        .map(
+                          (segment) => `
+                            <div class="legend-row">
+                              <span class="swatch" style="background:${segment.color};"></span>
+                              <div class="legend-copy">
+                                <strong>${escapeHtml(segment.label)}</strong>
+                                <span>${segment.value === 1 && payor.fileCount === null ? "Needs resolution" : `${formatInt(segment.value)} files`}</span>
+                              </div>
+                            </div>
+                          `,
+                        )
+                        .join("")}
+                    </div>
+                  </div>
+                  <div>
+                    <div class="payor-metrics">
+                      <div class="mini">
+                        <strong>MA size / claims</strong>
+                        <span>${escapeHtml(formatLives(payor.coveredLives))}<br />Claims rank: ${escapeHtml(payor.claimsRank)}</span>
+                      </div>
+                      <div class="mini">
+                        <strong>Current volume</strong>
+                        <span>${formatGb(payor.volumeGb)}<br />${escapeHtml(volumeShare)}</span>
+                      </div>
+                      <div class="mini">
+                        <strong>Separate ingest?</strong>
+                        <span>${escapeHtml(payor.separateIngest)}</span>
+                      </div>
+                      <div class="mini">
+                        <strong>Plan topology</strong>
+                        <span>${escapeHtml(payor.structuresLabel)}<br />${payor.planRefs !== null ? `${formatInt(payor.planRefs)} plan refs` : "Plan refs TBD"}</span>
+                      </div>
+                    </div>
+                    <div class="list-tight">
+                      <div>
+                        <strong>Plan breakdown</strong>
+                        ${payor.uniquePlanNames !== null ? `${formatInt(payor.uniquePlanNames)} unique plan names, ${formatInt(payor.uniquePlanIds)} unique plan IDs, ${escapeHtml(payor.planIdTypes)}` : escapeHtml(payor.planIdTypes)}
+                      </div>
+                      <div>
+                        <strong>Source links</strong>
+                        <div class="link-list" style="margin-top:10px;">
+                          ${linkChips([payor.landingPage, ...payor.manifestLinks])}
+                        </div>
+                      </div>
+                      <div>
+                        <strong>Main note</strong>
+                        ${escapeHtml(payor.mainNote)}
+                      </div>
+                      <div>
+                        <strong>Source freshness</strong>
+                        ${escapeHtml(payor.lastUpdated)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            `;
+          })
+          .join("");
+      };
+
+      const renderInventory = () => {
+        document.getElementById("inventory-body").innerHTML = payors
+          .map(
+            (payor) => `
+              <tr>
+                <td>
+                  <strong>${escapeHtml(payor.name)}</strong>
+                  ${escapeHtml(payor.legal)}
+                </td>
+                <td>
+                  <strong>${escapeHtml(formatLives(payor.coveredLives))}</strong>
+                  Claims rank: ${escapeHtml(payor.claimsRank)}
+                </td>
+                <td>${escapeHtml(payor.separateIngest)}</td>
+                <td>
+                  <strong>${escapeHtml(payor.structuresLabel)}</strong>
+                  ${payor.planRefs !== null ? `${formatInt(payor.planRefs)} plan refs` : "Plan refs TBD"}<br />
+                  ${payor.uniquePlanNames !== null ? `${formatInt(payor.uniquePlanNames)} unique plan names / ${formatInt(payor.uniquePlanIds)} unique plan IDs` : "Unique plan counts TBD"}
+                </td>
+                <td>
+                  <strong>${payor.fileCount !== null ? `${formatInt(payor.fileCount)} total` : "TBD"}</strong>
+                  ${
+                    payor.inNetworkFiles !== null
+                      ? `${formatInt(payor.inNetworkFiles)} in-network / ${formatInt(payor.allowedFiles)} allowed`
+                      : "Counts not yet resolved"
+                  }
+                </td>
+                <td><strong>${formatGb(payor.volumeGb)}</strong></td>
+                <td>
+                  <div class="link-list">
+                    ${linkChips([payor.landingPage, ...payor.manifestLinks])}
+                  </div>
+                </td>
+                <td>${escapeHtml(payor.mainNote)}</td>
+              </tr>
+            `,
+          )
+          .join("");
+      };
+
+      const renderSources = () => {
+        document.getElementById("sources-list").innerHTML = sources
+          .map(
+            (source) => `
+              <div class="source-item">
+                <strong>${escapeHtml(source.label)}</strong>
+                <a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">${escapeHtml(source.url)}</a>
+              </div>
+            `,
+          )
+          .join("");
+      };
+
+      renderSummary();
+      renderOverallVolumeChart();
+      renderEstimate();
+      renderArchitecture();
+      renderRoadmap();
+      renderPhases();
+      renderPayors();
+      renderInventory();
+      renderSources();
+    </script>
+  </body>
+</html>
